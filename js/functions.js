@@ -1,4 +1,4 @@
-﻿const SUPABASE_URL = "https://jtnlcckphveeqhyrxlku.supabase.co";
+const SUPABASE_URL = "https://jtnlcckphveeqhyrxlku.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_khOBBj9EIe2Ahmkz_KxVUw_R-SDOpk0";
 const PLANILLA_SUPABASE_URL = "https://cbplebkmxrkaafqdhiyi.supabase.co";
 const PLANILLA_SUPABASE_ANON_KEY = "sb_publishable_DZCceNTENY4ViP17-eZrGg_bdMElZ9X";
@@ -47,6 +47,7 @@ let currentUserRole = "";
 let currentUserBase = "";
 let currentProgramacionId = null;
 let currentProgramacionFileName = "programacion_online";
+let programacionesTotalCount = 0;
 let dragFeedbackTimer = null;
 let swapModalResolver = null;
 let noteModalResolver = null;
@@ -59,6 +60,11 @@ let syncRetryTimer = null;
 let autoRefreshTimer = null;
 const SYNC_RETRY_DELAY_MS = 8000;
 const AUTO_REFRESH_DELAY_MS = 45000;
+const PROGRAMACION_HISTORY_FETCH_LIMIT = 80;
+const ENABLE_PROGRAMACION_AUTO_REFRESH = false;
+const ENABLE_PROGRAMACION_SUPABASE = false;
+const ENABLE_NOVEDADES_SUPABASE = false;
+const programacionReferenceRowsCache = new Map();
 
 function getPendingRowsStorageKey(){
   return `pending_programacion_rows_${currentUserId || "anon"}`;
@@ -95,8 +101,51 @@ function clearPendingRowsLocal(){
 }
 
 function hasPendingRowsLocal(){
+  if (!ENABLE_PROGRAMACION_SUPABASE) return false;
   const pending = readPendingRowsLocal();
   return !!(pending && Array.isArray(pending.rows_data) && pending.rows_data.length > 0);
+}
+
+function cacheProgramacionReferenceRows(programacionId, rowsInput){
+  if (!programacionId) return;
+  const normalizedRows = Array.isArray(rowsInput) ? rowsInput : [];
+  programacionReferenceRowsCache.set(String(programacionId), normalizedRows);
+}
+
+function getProgramacionBadgeLabel(){
+  return ENABLE_PROGRAMACION_SUPABASE ? "Programacion en linea" : "Programacion local";
+}
+
+function getProgramacionLocalSyncLabel(){
+  return "Modo local (sin Supabase)";
+}
+
+function getNovedadesStorageKey(){
+  return `novedades_local_${currentUserId || "anon"}`;
+}
+
+function readNovedadesLocal(){
+  try {
+    const raw = localStorage.getItem(getNovedadesStorageKey());
+    const parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (e) {
+    return [];
+  }
+}
+
+function saveNovedadesLocal(list){
+  try {
+    const payload = Array.isArray(list) ? list : [];
+    localStorage.setItem(getNovedadesStorageKey(), JSON.stringify(payload));
+  } catch (e) {}
+}
+
+function getProgramacionRowsCountLabel(){
+  if (typeof programacionesTotalCount === "number" && programacionesTotalCount > 0) {
+    return programacionesTotalCount;
+  }
+  return Array.isArray(programacionesHistory) ? programacionesHistory.length : 0;
 }
 
 function clearSyncRetryTimer(){
@@ -122,6 +171,7 @@ function isViewingLatestProgramacion(){
 }
 
 async function refreshFromSupabaseIfSafe(){
+  if (!ENABLE_PROGRAMACION_SUPABASE) return;
   if (!currentUserId) return;
   if (syncRowsInProgress || syncRowsPending) return;
   if (hasPendingRowsLocal()) return;
@@ -159,7 +209,7 @@ function showToast(msg, type = "ok"){
 
 function setSyncStatus(type, msg){
   lblSync.textContent = msg;
-  lblSync.className = `pill pill-${type}`;
+  lblSync.className = `pill pill-${type} hidden`;
 }
 
 function canViewAllRowsByRole(){
@@ -576,9 +626,10 @@ function applyAuthState(session){
         ? `Usuario: ${currentUserEmail} (${formatBaseLabel(currentUserBase)})`
         : `Usuario: ${currentUserEmail || "sin correo"}`;
     setAuthStatus("Sesion iniciada.", "ok");
-    setSyncStatus("warn", "Validando datos...");
     updateExportAccess();
-    if(!appInitialized || rows.length === 0){
+    const shouldInitialize = !appInitialized || rows.length === 0;
+    if(shouldInitialize){
+      setSyncStatus("warn", ENABLE_PROGRAMACION_SUPABASE ? "Validando datos..." : "Cargando datos locales...");
       appInitialized = true;
       initializeApp().catch((error) => {
         console.error("Error inicializando app:", error);
@@ -587,6 +638,11 @@ function applyAuthState(session){
         appInitialized = false;
       });
     } else {
+      if (hasPendingRowsLocal()) {
+        setSyncStatus("warn", "Pendiente por sincronizar");
+      } else if (currentProgramacionId && Array.isArray(rows) && rows.length > 0) {
+        setSyncStatus(ENABLE_PROGRAMACION_SUPABASE ? "ok" : "warn", ENABLE_PROGRAMACION_SUPABASE ? "Programacion online" : getProgramacionLocalSyncLabel());
+      }
       applyRoleRestrictions();
     }
   }else{
@@ -830,6 +886,9 @@ function getRowsScopedForCurrentUser(rowsInput){
 }
 
 async function verifyProgramacionPersisted(programacionId, expectedRows){
+  if (!ENABLE_PROGRAMACION_SUPABASE) {
+    return { ok: true, method: "local_mode", message: "Modo local activo." };
+  }
   if (!programacionId) {
     return { ok: false, method: "none", message: "No existe programacion activa para verificar." };
   }
@@ -909,6 +968,7 @@ function buildProgramacionFilaPayload(rowsInput, programacionId){
 }
 
 async function loadProgramacionRowsFromSupabase(programacionId){
+  if (!ENABLE_PROGRAMACION_SUPABASE) return { ok: false, unavailable: true, rows: [] };
   if (!programacionId) return { ok: true, rows: [] };
   const pageSize = 1000;
   const allRows = [];
@@ -939,7 +999,22 @@ async function loadProgramacionRowsFromSupabase(programacionId){
   };
 }
 
+async function loadProgramacionRowsDataFallback(programacionId){
+  if (!ENABLE_PROGRAMACION_SUPABASE) return { normalized: [], unmappedVehicles: 0 };
+  if (!programacionId) return { normalized: [], unmappedVehicles: 0 };
+  const { data, error } = await supabaseClient
+    .from("programaciones")
+    .select("rows_data")
+    .eq("id", programacionId)
+    .single();
+  if (error) throw error;
+  const prepared = normalizeProgramacionRows(Array.isArray(data?.rows_data) ? data.rows_data : []);
+  cacheProgramacionReferenceRows(programacionId, prepared.normalized);
+  return prepared;
+}
+
 async function syncProgramacionRowsTable(programacionId, rowsInput){
+  if (!ENABLE_PROGRAMACION_SUPABASE) return { ok: false, skipped: true, unavailable: true };
   if (!programacionId || !currentUserId) return { ok: false, skipped: true };
   const payload = buildProgramacionFilaPayload(rowsInput, programacionId);
   const pageSize = 1000;
@@ -1046,15 +1121,29 @@ function mergeRowsForBaseOperator(latestRowsInput, localRowsInput, baseCanonical
 }
 
 async function loadLatestProgramacionFromSupabase(){
+  if (!ENABLE_PROGRAMACION_SUPABASE) {
+    programacionesHistory = [];
+    programacionesTotalCount = 0;
+    renderProgramacionesHistoryOptions();
+    if (!Array.isArray(rows) || rows.length === 0) {
+      lblGlobal.textContent = "Sin archivo cargado (modo local)";
+    } else {
+      lblGlobal.textContent = currentProgramacionFileName
+        ? `${getProgramacionBadgeLabel()}: ${currentProgramacionFileName} | Filas: ${rows.length}`
+        : `${getProgramacionBadgeLabel()} | Filas: ${rows.length}`;
+    }
+    setSyncStatus("warn", getProgramacionLocalSyncLabel());
+    return;
+  }
   let query = supabaseClient
     .from("programaciones")
-    .select("id, file_name, rows_data, uploaded_by, created_at")
+    .select("id, file_name, uploaded_by, created_at", { count: "exact" })
     .order("id", { ascending: false })
-    .limit(500);
+    .limit(PROGRAMACION_HISTORY_FETCH_LIMIT);
   if (!canViewAllRowsByRole()) {
     query = query.eq("uploaded_by", currentUserId);
   }
-  const { data, error } = await query;
+  const { data, error, count } = await query;
 
   if (error) {
     console.error("Error cargando programacion:", error);
@@ -1064,6 +1153,7 @@ async function loadLatestProgramacionFromSupabase(){
   }
 
   programacionesHistory = data || [];
+  programacionesTotalCount = typeof count === "number" ? count : programacionesHistory.length;
   renderProgramacionesHistoryOptions();
 
   if (programacionesHistory.length === 0) {
@@ -1077,21 +1167,28 @@ async function loadLatestProgramacionFromSupabase(){
   currentProgramacionId = latest.id;
   currentProgramacionFileName = latest.file_name || currentProgramacionFileName;
 
-  const latestPrepared = normalizeProgramacionRows(Array.isArray(latest.rows_data) ? latest.rows_data : []);
-  let nextRows = dedupeProgramacionRows(latestPrepared.normalized).rows;
+  let latestPrepared = { normalized: [], unmappedVehicles: 0 };
+  let nextRows = [];
 
   let loadedFromRowsTable = false;
   try {
     const rowsResult = await loadProgramacionRowsFromSupabase(currentProgramacionId);
     if (rowsResult?.ok && Array.isArray(rowsResult.rows) && rowsResult.rows.length > 0) {
-      const reordered = reorderRowsByReference(nextRows, rowsResult.rows);
-      rows = dedupeProgramacionRows(reordered).rows;
+      rows = dedupeProgramacionRows(rowsResult.rows).rows;
+      cacheProgramacionReferenceRows(currentProgramacionId, rows);
       loadedFromRowsTable = true;
     }
   } catch (rowsError) {
     console.warn("No se pudo leer programacion_filas durante la carga:", rowsError);
   }
   if (!loadedFromRowsTable) {
+    try {
+      latestPrepared = await loadProgramacionRowsDataFallback(currentProgramacionId);
+      nextRows = dedupeProgramacionRows(latestPrepared.normalized).rows;
+      cacheProgramacionReferenceRows(currentProgramacionId, nextRows);
+    } catch (fallbackError) {
+      console.warn("No se pudo leer rows_data como respaldo:", fallbackError);
+    }
     rows = nextRows;
     if (latestPrepared.unmappedVehicles > 0) {
       showToast(`Atencion: ${latestPrepared.unmappedVehicles} vehiculos sin base mapeada.`, "warn");
@@ -1099,7 +1196,7 @@ async function loadLatestProgramacionFromSupabase(){
       return;
     }
   }
-  lblGlobal.textContent = `Programacion en linea: ${programacionesHistory.length} archivos | Filas: ${rows.length}`;
+  lblGlobal.textContent = `${getProgramacionBadgeLabel()}: ${getProgramacionRowsCountLabel()} archivos | Filas: ${rows.length}`;
   updateExportAccess();
   fillStartBases();
   setSyncStatus("ok", "Programacion online");
@@ -1109,7 +1206,10 @@ function renderProgramacionesHistoryOptions(){
   const sel = document.getElementById("historyProgramacion");
   if (!sel) return;
   const prev = sel.value || "";
-  sel.innerHTML = `<option value="">Historial de programaciones...</option>`;
+  const emptyLabel = ENABLE_PROGRAMACION_SUPABASE
+    ? "Historial de programaciones..."
+    : "Historial local (sesion actual)...";
+  sel.innerHTML = `<option value="">${emptyLabel}</option>`;
   programacionesHistory.forEach(rec => {
     const op = document.createElement("option");
     op.value = String(rec.id);
@@ -1128,28 +1228,80 @@ async function applyProgramacionRecord(record){
   if (!record) return;
   currentProgramacionId = record.id;
   currentProgramacionFileName = record.file_name || currentProgramacionFileName;
-  const prepared = normalizeProgramacionRows(Array.isArray(record.rows_data) ? record.rows_data : []);
+  if (!ENABLE_PROGRAMACION_SUPABASE) {
+    const preparedLocal = normalizeProgramacionRows(Array.isArray(record.rows_data) ? record.rows_data : []);
+    rows = dedupeProgramacionRows(preparedLocal.normalized).rows;
+    cacheProgramacionReferenceRows(currentProgramacionId, rows);
+    lblGlobal.textContent = `${getProgramacionBadgeLabel()}: ${record.file_name || "archivo_local"} | Filas: ${rows.length}`;
+    updateExportAccess();
+    fillStartBases();
+    if (currentBase) refreshFilterDateOptions();
+    renderTable();
+    renderDrivers();
+    renderNovedades();
+    setSyncStatus("warn", getProgramacionLocalSyncLabel());
+    return;
+  }
+  let prepared = { normalized: [], unmappedVehicles: 0 };
+  let loadedFromRowsTable = false;
   try {
     const rowsResult = await loadProgramacionRowsFromSupabase(currentProgramacionId);
-    rows = rowsResult.ok ? reorderRowsByReference(prepared.normalized, rowsResult.rows) : prepared.normalized;
+    if (rowsResult.ok && Array.isArray(rowsResult.rows) && rowsResult.rows.length > 0) {
+      rows = rowsResult.rows;
+      cacheProgramacionReferenceRows(currentProgramacionId, rowsResult.rows);
+      loadedFromRowsTable = true;
+    }
   } catch (rowsError) {
     console.error("Error cargando filas del historial:", rowsError);
-    rows = prepared.normalized;
+  }
+  if (!loadedFromRowsTable) {
+    try {
+      prepared = await loadProgramacionRowsDataFallback(currentProgramacionId);
+      rows = prepared.normalized;
+    } catch (fallbackError) {
+      console.error("Error cargando respaldo rows_data del historial:", fallbackError);
+      rows = [];
+    }
   }
   rows = dedupeProgramacionRows(rows).rows;
-  lblGlobal.textContent = `Programacion en linea: ${record.file_name} | Filas: ${rows.length}`;
+  lblGlobal.textContent = `${getProgramacionBadgeLabel()}: ${record.file_name} | Filas: ${rows.length}`;
   updateExportAccess();
   fillStartBases();
   if (currentBase) refreshFilterDateOptions();
   renderTable();
   renderDrivers();
   renderNovedades();
-  setSyncStatus(prepared.unmappedVehicles > 0 ? "warn" : "ok", prepared.unmappedVehicles > 0 ? "Mapeo parcial" : "Programacion online");
+  const hasPartialMapping = !loadedFromRowsTable && prepared.unmappedVehicles > 0;
+  setSyncStatus(hasPartialMapping ? "warn" : "ok", hasPartialMapping ? "Mapeo parcial" : "Programacion online");
 }
 
 async function saveProgramacionToSupabase(file, parsedRows){
   if (!currentUserId) {
     throw new Error("No hay sesion activa.");
+  }
+  if (!ENABLE_PROGRAMACION_SUPABASE) {
+    currentProgramacionId = `local-${Date.now()}`;
+    currentProgramacionFileName = file?.name || currentProgramacionFileName;
+    if (currentProgramacionId) {
+      programacionesHistory = [
+        {
+          id: currentProgramacionId,
+          file_name: file?.name || currentProgramacionFileName,
+          rows_data: parsedRows,
+          uploaded_by: currentUserId,
+          created_at: new Date().toISOString()
+        },
+        ...programacionesHistory.filter(r => String(r.id) !== String(currentProgramacionId))
+      ];
+      programacionesTotalCount = programacionesHistory.length;
+      cacheProgramacionReferenceRows(currentProgramacionId, parsedRows);
+      renderProgramacionesHistoryOptions();
+      rows = dedupeProgramacionRows(parsedRows).rows;
+      lblGlobal.textContent = `${getProgramacionBadgeLabel()}: ${programacionesHistory.length} archivos | Filas: ${rows.length}`;
+    }
+    setSyncStatus("warn", getProgramacionLocalSyncLabel());
+    showToast("Archivo cargado en modo local.", "ok");
+    return;
   }
 
   const storagePath = `${currentUserId}/${Date.now()}_${safeFileName(file.name)}`;
@@ -1205,9 +1357,11 @@ async function saveProgramacionToSupabase(file, parsedRows){
       },
       ...programacionesHistory.filter(r => String(r.id) !== String(currentProgramacionId))
     ];
+    programacionesTotalCount = Math.max(programacionesTotalCount + 1, programacionesHistory.length);
+    cacheProgramacionReferenceRows(currentProgramacionId, parsedRows);
     renderProgramacionesHistoryOptions();
     rows = dedupeProgramacionRows(parsedRows).rows;
-    lblGlobal.textContent = `Programacion en linea: ${programacionesHistory.length} archivos | Filas: ${rows.length}`;
+    lblGlobal.textContent = `${getProgramacionBadgeLabel()}: ${getProgramacionRowsCountLabel()} archivos | Filas: ${rows.length}`;
   }
   setSyncStatus("ok", "Archivo guardado");
   showToast("Archivo validado y sincronizado en Supabase.", "ok");
@@ -1215,6 +1369,13 @@ async function saveProgramacionToSupabase(file, parsedRows){
 
 async function syncProgramacionRowsToSupabase(reason = "Cambios guardados en Supabase."){
   if (!currentUserId || !Array.isArray(rows)) return false;
+  if (!ENABLE_PROGRAMACION_SUPABASE) {
+    clearPendingRowsLocal();
+    clearSyncRetryTimer();
+    setSyncStatus("warn", getProgramacionLocalSyncLabel());
+    showToast("Cambios guardados en modo local.", "ok");
+    return true;
+  }
   if (!navigator.onLine) {
     savePendingRowsLocally("Sin internet");
     setSyncStatus("warn", "Sin internet - pendiente");
@@ -1302,6 +1463,7 @@ async function syncProgramacionRowsToSupabase(reason = "Cambios guardados en Sup
           : rec
       );
     }
+    cacheProgramacionReferenceRows(currentProgramacionId, rowsToPersist);
     showToast(`${reason} (verificado)`, "ok");
     clearPendingRowsLocal();
     clearSyncRetryTimer();
@@ -1330,6 +1492,11 @@ async function syncProgramacionRowsToSupabase(reason = "Cambios guardados en Sup
 async function loadNovedadesFromSupabase(options = {}){
   const silent = !!options.silent;
   if (!currentUserId) return;
+  if (!ENABLE_NOVEDADES_SUPABASE) {
+    novedades = readNovedadesLocal();
+    if (!silent) showToast(`Novedades locales: ${novedades.length}`, "ok");
+    return;
+  }
   let query = supabaseClient
     .from("novedades")
     .select("id, nombre, base, estado, fecha")
@@ -1355,6 +1522,18 @@ async function createNovedadInSupabase(payload){
   if (!currentUserId) {
     throw new Error("No hay sesion activa.");
   }
+  if (!ENABLE_NOVEDADES_SUPABASE) {
+    const localRow = {
+      id: `nov-local-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      nombre: payload.nombre,
+      base: payload.base,
+      estado: payload.estado,
+      fecha: payload.fecha
+    };
+    setSyncStatus("warn", "Novedades en modo local");
+    showToast("Novedad registrada en modo local.", "ok");
+    return localRow;
+  }
   const { data, error } = await supabaseClient
     .from("novedades")
     .insert({
@@ -1373,6 +1552,15 @@ async function createNovedadInSupabase(payload){
 }
 
 async function updateNovedadEstadoInSupabase(id, estado){
+  if (!ENABLE_NOVEDADES_SUPABASE) {
+    const localRows = readNovedadesLocal();
+    const nextRows = localRows.map(item =>
+      String(item?.id) === String(id) ? { ...item, estado } : item
+    );
+    saveNovedadesLocal(nextRows);
+    setSyncStatus("warn", "Novedades en modo local");
+    return;
+  }
   const { error } = await supabaseClient
     .from("novedades")
     .update({ estado })
@@ -1385,6 +1573,13 @@ async function updateNovedadEstadoInSupabase(id, estado){
 }
 
 async function deleteNovedadInSupabase(id){
+  if (!ENABLE_NOVEDADES_SUPABASE) {
+    const localRows = readNovedadesLocal();
+    const nextRows = localRows.filter(item => String(item?.id) !== String(id));
+    saveNovedadesLocal(nextRows);
+    setSyncStatus("warn", "Novedades en modo local");
+    return;
+  }
   const { error } = await supabaseClient
     .from("novedades")
     .delete()
@@ -1709,6 +1904,10 @@ function applyRoleRestrictions(){
 
 async function renderSupabaseDebug(){
   if (!debugOutput) return;
+  if (!ENABLE_PROGRAMACION_SUPABASE) {
+    debugOutput.textContent = "Modo local activo: programaciones desconectadas de Supabase.";
+    return;
+  }
   if (!currentUserId) {
     debugOutput.textContent = "Sin sesion activa.";
     return;
@@ -3605,6 +3804,8 @@ function reorderRowsByReference(referenceRowsInput, liveRowsInput){
 
 function getCurrentProgramacionReferenceRows(){
   if (!currentProgramacionId || !Array.isArray(programacionesHistory)) return [];
+  const cached = programacionReferenceRowsCache.get(String(currentProgramacionId));
+  if (Array.isArray(cached) && cached.length > 0) return cached;
   const rec = programacionesHistory.find(r => String(r.id) === String(currentProgramacionId));
   return Array.isArray(rec?.rows_data) ? rec.rows_data : [];
 }
@@ -4221,11 +4422,12 @@ function renderNovedades(){
         try {
           await updateNovedadEstadoInSupabase(id, nuevoEstado);
           novedades[globalIndex].estado = nuevoEstado;
+          if (!ENABLE_NOVEDADES_SUPABASE) saveNovedadesLocal(novedades);
           renderNovedades();
           renderDrivers(); // Actualizar disponibles
         } catch (error) {
           console.error("Error actualizando novedad:", error);
-          alert(`No se pudo actualizar la novedad en Supabase.\n${error?.message || ""}`);
+          alert(`No se pudo actualizar la novedad.\n${error?.message || ""}`);
           renderNovedades();
         }
       }
@@ -4241,11 +4443,12 @@ function renderNovedades(){
         try {
           await deleteNovedadInSupabase(id);
           novedades.splice(globalIndex, 1);
+          if (!ENABLE_NOVEDADES_SUPABASE) saveNovedadesLocal(novedades);
           renderNovedades();
           renderDrivers(); // Actualizar disponibles
         } catch (error) {
           console.error("Error eliminando novedad:", error);
-          alert("No se pudo eliminar la novedad en Supabase.");
+          alert("No se pudo eliminar la novedad.");
         }
       }
     });
@@ -5027,6 +5230,7 @@ if (novedadesGrid) {
           fecha: selectedDate
         });
         novedades.unshift(nueva);
+        if (!ENABLE_NOVEDADES_SUPABASE) saveNovedadesLocal(novedades);
         
         renderNovedades();
         renderDrivers(); // Actualizar lista de disponibles
@@ -5034,10 +5238,10 @@ if (novedadesGrid) {
     } catch (e) {
       console.error('Error creando novedad', e);
       const detail = String(e?.message || "");
-      const duplicateHint = detail.toLowerCase().includes("duplicate key")
+      const duplicateHint = ENABLE_NOVEDADES_SUPABASE && detail.toLowerCase().includes("duplicate key")
         ? "\nPosible causa: indice unico de novedades sin fecha."
         : "";
-      alert(`No se pudo guardar la novedad en Supabase.\n${detail}${duplicateHint}`);
+      alert(`No se pudo guardar la novedad.\n${detail}${duplicateHint}`);
       setSyncStatus("err", "Error novedades");
     }
   };
@@ -5336,8 +5540,8 @@ async function handleDeleteDayClick(){
   renderDrivers();
   renderNovedades();
   lblGlobal.textContent = currentProgramacionFileName
-    ? `Programacion en linea: ${currentProgramacionFileName} | Filas: ${rows.length}`
-    : `Programacion en linea | Filas: ${rows.length}`;
+    ? `${getProgramacionBadgeLabel()}: ${currentProgramacionFileName} | Filas: ${rows.length}`
+    : `${getProgramacionBadgeLabel()} | Filas: ${rows.length}`;
 
   await syncProgramacionRowsToSupabase(`Dia ${excelDateToReadable(dayIso)} eliminado (${selected.length} filas).`);
 }
@@ -5806,8 +6010,8 @@ async function initializeApp(){
       AppState.replaceRows(pending.rows_data);
       fillStartBases();
       showToast("Se recuperaron cambios pendientes locales.", "warn");
-      setSyncStatus("warn", "Pendiente por sincronizar");
-      if (navigator.onLine) {
+      setSyncStatus("warn", ENABLE_PROGRAMACION_SUPABASE ? "Pendiente por sincronizar" : getProgramacionLocalSyncLabel());
+      if (ENABLE_PROGRAMACION_SUPABASE && navigator.onLine) {
         await syncProgramacionRowsToSupabase("Cambios pendientes sincronizados.");
       }
     } else {
@@ -5832,13 +6036,21 @@ async function initializeApp(){
 
 function bindWindowEvents(){
   window.addEventListener("online", async () => {
+    if (!ENABLE_PROGRAMACION_SUPABASE) {
+      setSyncStatus("warn", getProgramacionLocalSyncLabel());
+      return;
+    }
     showToast("Conexion restablecida. Sincronizando...", "ok");
     setSyncStatus("warn", "Reconectado - sincronizando");
     await syncProgramacionRowsToSupabase("Cambios pendientes sincronizados.");
-    await refreshFromSupabaseIfSafe();
+    if (ENABLE_PROGRAMACION_AUTO_REFRESH) await refreshFromSupabaseIfSafe();
   });
 
   window.addEventListener("offline", () => {
+    if (!ENABLE_PROGRAMACION_SUPABASE) {
+      setSyncStatus("warn", getProgramacionLocalSyncLabel());
+      return;
+    }
     setSyncStatus("warn", "Sin internet - modo local");
     showToast("Sin internet. Se guardara localmente.", "warn");
   });
@@ -5862,7 +6074,7 @@ function bindWindowEvents(){
     if (navigator.onLine && hasPendingRowsLocal()) {
       await syncProgramacionRowsToSupabase("Sincronizacion al volver a la ventana.");
     }
-    await refreshFromSupabaseIfSafe();
+    if (ENABLE_PROGRAMACION_AUTO_REFRESH) await refreshFromSupabaseIfSafe();
   });
 
   document.addEventListener("visibilitychange", async () => {
@@ -5870,10 +6082,10 @@ function bindWindowEvents(){
     if (navigator.onLine && hasPendingRowsLocal()) {
       await syncProgramacionRowsToSupabase("Sincronizacion al volver a la pestana.");
     }
-    await refreshFromSupabaseIfSafe();
+    if (ENABLE_PROGRAMACION_AUTO_REFRESH) await refreshFromSupabaseIfSafe();
   });
 
-  if (!autoRefreshTimer) {
+  if (ENABLE_PROGRAMACION_AUTO_REFRESH && !autoRefreshTimer) {
     autoRefreshTimer = setInterval(async () => {
       if (!navigator.onLine) return;
       if (hasPendingRowsLocal()) {
@@ -5895,5 +6107,7 @@ function bindWindowEvents(){
 
   window.addEventListener("resize", adjustDynamicTableViewport);
 }
+
+
 
 

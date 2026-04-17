@@ -2,7 +2,47 @@ const SUPABASE_URL = "https://jtnlcckphveeqhyrxlku.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_khOBBj9EIe2Ahmkz_KxVUw_R-SDOpk0";
 const PLANILLA_SUPABASE_URL = "https://cbplebkmxrkaafqdhiyi.supabase.co";
 const PLANILLA_SUPABASE_ANON_KEY = "sb_publishable_DZCceNTENY4ViP17-eZrGg_bdMElZ9X";
-const PLANILLA_TABLE_NAME = "planilla_afiliados";
+const SONAR_DISPATCH_URL = "https://cbplebkmxrkaafqdhiyi.supabase.co/functions/v1/sonar-dispatch";
+const SONAR_DISPATCH_KEY = PLANILLA_SUPABASE_ANON_KEY;
+const SONAR_CANCEL_URL = "https://cbplebkmxrkaafqdhiyi.supabase.co/functions/v1/sonar-cancel";
+const SONAR_CANCEL_KEY = PLANILLA_SUPABASE_ANON_KEY;
+const OUT_OF_LIST_WEBHOOK_URL = "https://connect.pabbly.com/webhook-listener/webhook/IjU3NjEwNTY4MDYzMDA0MzQ1MjZjNTUzMiI_3D_pc/IjU3NjcwNTZlMDYzNjA0MzI1MjY0NTUzMDUxMzQi_pc";
+const PLANILLA_OPTIONAL_REG_ID_COLUMNS = ["reg_id", "regid", "regId"];
+const SONAR_ITINERARIES = [
+  { id: "3385", grupo: "AEROPUERTO", nombre: "Aeropuerto-San Diego-Tunel" },
+  { id: "3387", grupo: "NUTIBARA", nombre: "Nutibara-Aeropuerto-Autopista" },
+  { id: "3394", grupo: "NUTIBARA", nombre: "Nutibara-Aeropuerto-Variante Palmas" },
+  { id: "3395", grupo: "SANDIEGO", nombre: "San Diego-Aeropuerto-Variante Palmas" },
+  { id: "4413", grupo: "AEROPUERTO", nombre: "Aeropuerto-Exposiciones" },
+  { id: "4501", grupo: "AEROPUERTO", nombre: "Aeropuerto-autopista-terminalnorte" },
+  { id: "4502", grupo: "EXPOSICIONES", nombre: "Nutibara-exposiciones-tunel-aeropuerto" },
+  { id: "4503", grupo: "AEROPUERTO", nombre: "Aeropuerto-Tunel-Exposiciones-Nutibara" },
+  { id: "4505", grupo: "SANDIEGO", nombre: "Almacentro-Tunel-Aeropuerto" }
+];
+const PLANILLA_TABLE_NAME = "planilla_afiliados_2";
+const PLANILLA_TABLE_SOURCE_STORAGE_KEY = "planilla_table_source";
+const PLANILLA_AFILIADOS_2_COLUMNS = [
+  "id",
+  "cruce_key",
+  "hora_llegada",
+  "tipo_llegada",
+  "base",
+  "interno",
+  "mid",
+  "driver_id",
+  "itinerario_llegada",
+  "hora_despacho",
+  "itinerario_despacho",
+  "conductor",
+  "usuario",
+  "pasajeros",
+  "observaciones",
+  "estado",
+  "espera",
+  "generado_en",
+  "created_at",
+  "updated_at"
+];
 const SUPER_ADMIN_EMAIL = "administrador@combuses.com.co";
 const BASE_USER_EMAIL_RE = /^base\s*([0-9]+)@combuses\.com\.co$/i;
 const ALLOW_PUBLIC_SIGNUP = false;
@@ -23,6 +63,7 @@ const authUserLabel = document.getElementById("authUserLabel");
 const btnSignIn = document.getElementById("btnSignIn");
 const btnSignUp = document.getElementById("btnSignUp");
 const btnLogout = document.getElementById("btnLogout");
+const btnManualDispatch = document.getElementById("btnManualDispatch");
 const appToast = document.getElementById("appToast");
 const lblSync = document.getElementById("lblSync");
 const swapModal = document.getElementById("swapModal");
@@ -39,6 +80,54 @@ const noteModalInput = document.getElementById("noteModalInput");
 const btnNoteClear = document.getElementById("btnNoteClear");
 const btnNoteCancel = document.getElementById("btnNoteCancel");
 const btnNoteSave = document.getElementById("btnNoteSave");
+const dispatchModal = document.getElementById("dispatchModal");
+const dispatchModalInterno = document.getElementById("dispatchModalInterno");
+const dispatchModalBase = document.getElementById("dispatchModalBase");
+const dispatchModalMid = document.getElementById("dispatchModalMid");
+const dispatchModalDriverSelect = document.getElementById("dispatchModalDriverSelect");
+const dispatchModalItinerarySelect = document.getElementById("dispatchModalItinerarySelect");
+const dispatchModalObs = document.getElementById("dispatchModalObs");
+const btnDispatchCancel = document.getElementById("btnDispatchCancel");
+const btnDispatchConfirm = document.getElementById("btnDispatchConfirm");
+const cancelDispatchModal = document.getElementById("cancelDispatchModal");
+const cancelDispatchModalInterno = document.getElementById("cancelDispatchModalInterno");
+const cancelDispatchModalBase = document.getElementById("cancelDispatchModalBase");
+const cancelDispatchModalMid = document.getElementById("cancelDispatchModalMid");
+const cancelDispatchModalRegId = document.getElementById("cancelDispatchModalRegId");
+const cancelDispatchModalHora = document.getElementById("cancelDispatchModalHora");
+const cancelDispatchModalComments = document.getElementById("cancelDispatchModalComments");
+const cancelDispatchModalConfirmWord = document.getElementById("cancelDispatchModalConfirmWord");
+const btnCancelDispatchCancel = document.getElementById("btnCancelDispatchCancel");
+const btnCancelDispatchConfirm = document.getElementById("btnCancelDispatchConfirm");
+const removeFromListModal = document.getElementById("removeFromListModal");
+const removeFromListInterno = document.getElementById("removeFromListInterno");
+const removeFromListBase = document.getElementById("removeFromListBase");
+const removeFromListMid = document.getElementById("removeFromListMid");
+const removeFromListPunto = document.getElementById("removeFromListPunto");
+const removeFromListObs = document.getElementById("removeFromListObs");
+const removeFromListConfirmWord = document.getElementById("removeFromListConfirmWord");
+const btnRemoveFromListCancel = document.getElementById("btnRemoveFromListCancel");
+const btnRemoveFromListConfirm = document.getElementById("btnRemoveFromListConfirm");
+const editPlanillaModal = document.getElementById("editPlanillaModal");
+const editPlanillaModalInterno = document.getElementById("editPlanillaModalInterno");
+const editPlanillaModalBase = document.getElementById("editPlanillaModalBase");
+const editPlanillaModalMid = document.getElementById("editPlanillaModalMid");
+const editPlanillaModalPasajeros = document.getElementById("editPlanillaModalPasajeros");
+const editPlanillaModalObservaciones = document.getElementById("editPlanillaModalObservaciones");
+const btnEditPlanillaCancel = document.getElementById("btnEditPlanillaCancel");
+const btnEditPlanillaSave = document.getElementById("btnEditPlanillaSave");
+const manualDispatchModal = document.getElementById("manualDispatchModal");
+const manualDispatchInterno = document.getElementById("manualDispatchInterno");
+const manualDispatchInternoList = document.getElementById("manualDispatchInternoList");
+const manualDispatchBase = document.getElementById("manualDispatchBase");
+const manualDispatchMid = document.getElementById("manualDispatchMid");
+const manualDispatchConductorName = document.getElementById("manualDispatchConductorName");
+const manualDispatchConductorList = document.getElementById("manualDispatchConductorList");
+const manualDispatchDriverId = document.getElementById("manualDispatchDriverId");
+const manualDispatchItinerarySelect = document.getElementById("manualDispatchItinerarySelect");
+const manualDispatchObs = document.getElementById("manualDispatchObs");
+const btnManualDispatchCancel = document.getElementById("btnManualDispatchCancel");
+const btnManualDispatchConfirm = document.getElementById("btnManualDispatchConfirm");
 
 let appInitialized = false;
 let currentUserId = null;
@@ -51,6 +140,11 @@ let programacionesTotalCount = 0;
 let dragFeedbackTimer = null;
 let swapModalResolver = null;
 let noteModalResolver = null;
+let dispatchModalResolver = null;
+let cancelDispatchModalResolver = null;
+let removeFromListModalResolver = null;
+let editPlanillaModalResolver = null;
+let manualDispatchModalResolver = null;
 const ROW_UI_ID_KEY = "__ROW_UI_ID";
 let rowUiIdSeq = 1;
 const UNASSIGNED_LABEL = "SIN CONDUCTOR PROGRAMADO";
@@ -60,14 +154,98 @@ let syncRetryTimer = null;
 let autoRefreshTimer = null;
 const SYNC_RETRY_DELAY_MS = 8000;
 const AUTO_REFRESH_DELAY_MS = 45000;
+const DISPATCH_SERVER_SYNC_WAIT_MS = 65000;
 const PROGRAMACION_HISTORY_FETCH_LIMIT = 80;
 const ENABLE_PROGRAMACION_AUTO_REFRESH = false;
 const ENABLE_PROGRAMACION_SUPABASE = false;
 const ENABLE_NOVEDADES_SUPABASE = false;
 const programacionReferenceRowsCache = new Map();
+const cancelingRowUiIds = new Set();
+const removingFromListRowUiIds = new Set();
+let dispatchServerSyncTimer = null;
 
 function getPendingRowsStorageKey(){
   return `pending_programacion_rows_${currentUserId || "anon"}`;
+}
+
+function getOutOfListStorageKey(){
+  return `out_of_list_vehicles_${currentUserId || "anon"}`;
+}
+
+function buildOutOfListRowKey(row){
+  const interno = String(row?.interno || "").trim();
+  const mid = String(row?.mid || "").trim();
+  const base = String(row?.base || "").trim();
+  if (interno || mid) {
+    return `veh:${base}|${interno}|${mid}`;
+  }
+  const rowId = String(row?.id || "").trim();
+  if (rowId) return `id:${rowId}`;
+  const tipo = String(row?.tipo_llegada || "").trim();
+  const hora = String(row?.hora_llegada || row?.generado_en || row?.created_at || "").trim();
+  return `raw:${tipo}|${base}|${interno}|${mid}|${hora}`;
+}
+
+function rebuildOutOfListVehicleIndex(){
+  outOfListVehicleKeySet = new Set(
+    (Array.isArray(outOfListVehicles) ? outOfListVehicles : [])
+      .map(item => String(item?.row_key || "").trim())
+      .filter(Boolean)
+  );
+}
+
+function readOutOfListVehiclesLocal(){
+  try {
+    const raw = localStorage.getItem(getOutOfListStorageKey());
+    const parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (e) {
+    return [];
+  }
+}
+
+function saveOutOfListVehiclesLocal(list){
+  try {
+    const payload = Array.isArray(list) ? list : [];
+    localStorage.setItem(getOutOfListStorageKey(), JSON.stringify(payload));
+  } catch (e) {}
+}
+
+function loadOutOfListVehiclesLocal(){
+  outOfListVehicles = readOutOfListVehiclesLocal();
+  rebuildOutOfListVehicleIndex();
+}
+
+function isRowOutOfList(row){
+  const key = buildOutOfListRowKey(row);
+  return !!key && outOfListVehicleKeySet.has(key);
+}
+
+function filterOutOfListRows(rowsInput){
+  const rows = Array.isArray(rowsInput) ? rowsInput : [];
+  return rows.filter(row => !isRowOutOfList(row));
+}
+
+function addOutOfListVehicleEntry(entry){
+  const list = Array.isArray(outOfListVehicles) ? outOfListVehicles.slice() : [];
+  const rowKey = String(entry?.row_key || "").trim();
+  if (rowKey && list.some(item => String(item?.row_key || "").trim() === rowKey)) return false;
+  list.unshift(entry);
+  outOfListVehicles = list;
+  rebuildOutOfListVehicleIndex();
+  saveOutOfListVehiclesLocal(outOfListVehicles);
+  return true;
+}
+
+function updateOutOfListEntry(entryId, patch){
+  const id = String(entryId || "").trim();
+  if (!id) return;
+  outOfListVehicles = (Array.isArray(outOfListVehicles) ? outOfListVehicles : []).map(item => {
+    if (String(item?.id || "").trim() !== id) return item;
+    return { ...item, ...(patch || {}) };
+  });
+  rebuildOutOfListVehicleIndex();
+  saveOutOfListVehiclesLocal(outOfListVehicles);
 }
 
 function savePendingRowsLocally(reason = "Cambios pendientes"){
@@ -205,6 +383,20 @@ function showToast(msg, type = "ok"){
   dragFeedbackTimer = setTimeout(() => {
     appToast.className = `toast ${type}`;
   }, 2600);
+}
+
+function notifyDispatchServerSyncDelay(){
+  showToast("Despacho enviado. La informacion completa puede tardar hasta 1 minuto por sincronizacion del servidor Python.", "ok");
+  if (dispatchServerSyncTimer) {
+    clearTimeout(dispatchServerSyncTimer);
+    dispatchServerSyncTimer = null;
+  }
+  dispatchServerSyncTimer = setTimeout(async () => {
+    dispatchServerSyncTimer = null;
+    if (!currentUserId) return;
+    await loadPlanillaAfiliadosFromSupabase();
+    showToast("Actualizacion aplicada tras la espera de sincronizacion.", "ok");
+  }, DISPATCH_SERVER_SYNC_WAIT_MS);
 }
 
 function setSyncStatus(type, msg){
@@ -421,6 +613,346 @@ function openConductorNoteModal(payload = {}){
   });
 }
 
+function closeDispatchModal(confirmed){
+  if (dispatchModal) dispatchModal.classList.add("hidden");
+  if (dispatchModalResolver) {
+    const resolve = dispatchModalResolver;
+    dispatchModalResolver = null;
+    const itineraryId = String(dispatchModalItinerarySelect?.value || "").trim();
+    const driverId = String(dispatchModalDriverSelect?.value || "").trim();
+    resolve({ confirmed: !!confirmed, itineraryId, driverId });
+  }
+}
+
+function closeCancelDispatchModal(confirmed){
+  if (cancelDispatchModal) cancelDispatchModal.classList.add("hidden");
+  if (cancelDispatchModalResolver) {
+    const resolve = cancelDispatchModalResolver;
+    cancelDispatchModalResolver = null;
+    resolve({
+      confirmed: !!confirmed,
+      comments: String(cancelDispatchModalComments?.value || "").trim(),
+      confirmWord: String(cancelDispatchModalConfirmWord?.value || "").trim()
+    });
+  }
+}
+
+function openCancelDispatchModal(payload = {}){
+  if (!cancelDispatchModal || !btnCancelDispatchCancel || !btnCancelDispatchConfirm) {
+    const text = [
+      `Interno: ${payload.interno || "-"}`,
+      `Base: ${payload.base || "-"}`,
+      `MID: ${payload.mid || "-"}`,
+      `regId: ${payload.regId || "-"}`,
+      `Hora despacho: ${payload.horaDespacho || "-"}`
+    ].join("\n");
+    const comments = prompt(`Confirmar cancelacion?\n\n${text}\n\nMotivo de cancelacion:`, "");
+    if (comments === null) {
+      return Promise.resolve({ confirmed: false, comments: "", confirmWord: "" });
+    }
+    return Promise.resolve({
+      confirmed: true,
+      comments: String(comments || "").trim(),
+      confirmWord: "CANCELAR"
+    });
+  }
+  if (cancelDispatchModalInterno) cancelDispatchModalInterno.textContent = payload.interno || "-";
+  if (cancelDispatchModalBase) cancelDispatchModalBase.textContent = payload.base || "-";
+  if (cancelDispatchModalMid) cancelDispatchModalMid.textContent = payload.mid || "-";
+  if (cancelDispatchModalRegId) cancelDispatchModalRegId.textContent = payload.regId || "-";
+  if (cancelDispatchModalHora) cancelDispatchModalHora.textContent = payload.horaDespacho || "-";
+  if (cancelDispatchModalComments) cancelDispatchModalComments.value = "";
+  if (cancelDispatchModalConfirmWord) cancelDispatchModalConfirmWord.value = "";
+  cancelDispatchModal.classList.remove("hidden");
+  setTimeout(() => cancelDispatchModalComments?.focus(), 10);
+  return new Promise(resolve => {
+    cancelDispatchModalResolver = resolve;
+  });
+}
+
+function closeRemoveFromListModal(confirmed){
+  if (removeFromListModal) removeFromListModal.classList.add("hidden");
+  if (removeFromListModalResolver) {
+    const resolve = removeFromListModalResolver;
+    removeFromListModalResolver = null;
+    resolve({
+      confirmed: !!confirmed,
+      observacion: String(removeFromListObs?.value || "").trim(),
+      confirmWord: String(removeFromListConfirmWord?.value || "").trim()
+    });
+  }
+}
+
+function openRemoveFromListModal(payload = {}){
+  if (!removeFromListModal || !btnRemoveFromListCancel || !btnRemoveFromListConfirm) {
+    const info = [
+      `Interno: ${payload.interno || "-"}`,
+      `Base: ${payload.base || "-"}`,
+      `MID: ${payload.mid || "-"}`,
+      `Punto: ${payload.punto || "-"}`
+    ].join("\n");
+    const observacion = prompt(`Sacar vehiculo de la lista?\n\n${info}\n\nObservacion obligatoria:`, "");
+    if (observacion === null) return Promise.resolve({ confirmed: false, observacion: "", confirmWord: "" });
+    return Promise.resolve({ confirmed: true, observacion: String(observacion || "").trim(), confirmWord: "RETIRAR" });
+  }
+  if (removeFromListInterno) removeFromListInterno.textContent = payload.interno || "-";
+  if (removeFromListBase) removeFromListBase.textContent = payload.base || "-";
+  if (removeFromListMid) removeFromListMid.textContent = payload.mid || "-";
+  if (removeFromListPunto) removeFromListPunto.textContent = payload.punto || "-";
+  if (removeFromListObs) removeFromListObs.value = "";
+  if (removeFromListConfirmWord) removeFromListConfirmWord.value = "";
+  removeFromListModal.classList.remove("hidden");
+  setTimeout(() => removeFromListObs?.focus(), 10);
+  return new Promise(resolve => {
+    removeFromListModalResolver = resolve;
+  });
+}
+
+function closeEditPlanillaModal(confirmed){
+  if (editPlanillaModal) editPlanillaModal.classList.add("hidden");
+  if (editPlanillaModalResolver) {
+    const resolve = editPlanillaModalResolver;
+    editPlanillaModalResolver = null;
+    resolve({
+      confirmed: !!confirmed,
+      pasajeros: String(editPlanillaModalPasajeros?.value || "").trim(),
+      observaciones: String(editPlanillaModalObservaciones?.value || "").trim()
+    });
+  }
+}
+
+function openEditPlanillaModal(payload = {}){
+  if (!editPlanillaModal || !btnEditPlanillaCancel || !btnEditPlanillaSave) {
+    const pasajeros = prompt("Pasajeros:", String(payload.pasajeros || ""));
+    if (pasajeros === null) return Promise.resolve({ confirmed: false, pasajeros: "", observaciones: "" });
+    const observaciones = prompt("Observaciones:", String(payload.observaciones || ""));
+    if (observaciones === null) return Promise.resolve({ confirmed: false, pasajeros: "", observaciones: "" });
+    return Promise.resolve({
+      confirmed: true,
+      pasajeros: String(pasajeros || "").trim(),
+      observaciones: String(observaciones || "").trim()
+    });
+  }
+  if (editPlanillaModalInterno) editPlanillaModalInterno.textContent = payload.interno || "-";
+  if (editPlanillaModalBase) editPlanillaModalBase.textContent = payload.base || "-";
+  if (editPlanillaModalMid) editPlanillaModalMid.textContent = payload.mid || "-";
+  if (editPlanillaModalPasajeros) editPlanillaModalPasajeros.value = payload.pasajeros || "";
+  if (editPlanillaModalObservaciones) editPlanillaModalObservaciones.value = payload.observaciones || "";
+  editPlanillaModal.classList.remove("hidden");
+  setTimeout(() => editPlanillaModalPasajeros?.focus(), 10);
+  return new Promise(resolve => {
+    editPlanillaModalResolver = resolve;
+  });
+}
+
+function buildItineraryOptionsHtml(itinerariesInput){
+  const itineraries = Array.isArray(itinerariesInput) && itinerariesInput.length
+    ? itinerariesInput
+    : SONAR_ITINERARIES;
+  return `<option value="">Selecciona itinerario...</option>${
+    itineraries.map(item => {
+      const value = escapeHtml(String(item.id || ""));
+      const label = escapeHtml(`${item.grupo} | ${item.nombre} (${item.id})`);
+      return `<option value="${value}">${label}</option>`;
+    }).join("")
+  }`;
+}
+
+function fillDriverSelectOptions(selectEl, baseValue, preferredDriverId){
+  if (!selectEl) return;
+  const baseCanonical = getBaseCanonical(baseValue || "");
+  const allCatalog = Array.isArray(driversCatalogRows) ? driversCatalogRows : [];
+  const preferredId = String(preferredDriverId || "").trim();
+  const enabledRows = allCatalog.filter(row => String(row?.status || "").trim().toUpperCase() === "ENABLED");
+  const baseRows = enabledRows.filter(row => !baseCanonical || getCsvDriverBase(row) === baseCanonical);
+  const finalRows = baseRows.length ? baseRows : enabledRows;
+  selectEl.innerHTML = `<option value="">Selecciona conductor...</option>${
+    finalRows.map(row => {
+      const drId = String(row?.dr_id || "").trim();
+      const name = String(row?.nombre || "").trim();
+      const baseLabel = formatBaseLabel(getCsvDriverBase(row) || "");
+      return `<option value="${escapeHtml(drId)}">${escapeHtml(`${name} | ${drId} | ${baseLabel}`)}</option>`;
+    }).join("")
+  }`;
+  if (preferredId) {
+    selectEl.value = preferredId;
+    if (selectEl.value !== preferredId) {
+      const known = allCatalog.find(r => String(r?.dr_id || "").trim() === preferredId);
+      const op = document.createElement("option");
+      op.value = preferredId;
+      op.textContent = known
+        ? `${known.nombre || "Conductor"} | ${preferredId}`
+        : `Driver ID manual | ${preferredId}`;
+      selectEl.appendChild(op);
+      selectEl.value = preferredId;
+    }
+  }
+}
+
+function openDispatchConfirmModal(payload = {}){
+  if (!dispatchModal || !btnDispatchCancel || !btnDispatchConfirm) {
+    const text = [
+      `Interno: ${payload.interno || "-"}`,
+      `Base: ${payload.base || "-"}`,
+      `MID: ${payload.mid || "-"}`,
+      `Driver ID: ${payload.driverId || "-"}`,
+      `Itinerario ID: ${payload.itineraryId || "-"}`,
+      `Observaciones: ${payload.observaciones || "-"}`
+    ].join("\n");
+    const confirmed = confirm(`Confirmar despacho?\n\n${text}`);
+    return Promise.resolve({
+      confirmed,
+      itineraryId: String(payload.itineraryId || "").trim(),
+      driverId: String(payload.driverId || "").trim()
+    });
+  }
+  if (dispatchModalInterno) dispatchModalInterno.textContent = payload.interno || "-";
+  if (dispatchModalBase) dispatchModalBase.textContent = payload.base || "-";
+  if (dispatchModalMid) dispatchModalMid.textContent = payload.mid || "-";
+  fillDriverSelectOptions(dispatchModalDriverSelect, payload.base || "", payload.driverId || "");
+  if (dispatchModalItinerarySelect) {
+    const modalItineraries = Array.isArray(payload.itineraryOptions) && payload.itineraryOptions.length
+      ? payload.itineraryOptions
+      : SONAR_ITINERARIES;
+    dispatchModalItinerarySelect.innerHTML = buildItineraryOptionsHtml(modalItineraries);
+    const preferred = String(payload.itineraryId || "").trim();
+    if (preferred && modalItineraries.some(item => String(item.id) === preferred)) {
+      dispatchModalItinerarySelect.value = preferred;
+    }
+  }
+  if (dispatchModalObs) dispatchModalObs.textContent = payload.observaciones || "-";
+  dispatchModal.classList.remove("hidden");
+  return new Promise(resolve => {
+    dispatchModalResolver = resolve;
+  });
+}
+
+function closeManualDispatchModal(confirmed){
+  if (manualDispatchModal) manualDispatchModal.classList.add("hidden");
+  if (manualDispatchModalResolver) {
+    const resolve = manualDispatchModalResolver;
+    manualDispatchModalResolver = null;
+    resolve({
+      confirmed: !!confirmed,
+      interno: String(manualDispatchInterno?.value || "").trim(),
+      base: String(manualDispatchBase?.value || "").trim(),
+      mId: String(manualDispatchMid?.value || "").trim(),
+      conductorName: String(manualDispatchConductorName?.value || "").trim(),
+      drvId: String(manualDispatchDriverId?.value || "").trim(),
+      itinerary: String(manualDispatchItinerarySelect?.value || "").trim(),
+      observaciones: String(manualDispatchObs?.value || "").trim()
+    });
+  }
+}
+
+function getManualDispatchVehicleRows(){
+  const rows = Array.isArray(planillaAfiliadosRows) ? planillaAfiliadosRows : [];
+  const sorted = rows
+    .filter(row => !!String(row?.interno || "").trim())
+    .slice()
+    .sort(comparePlanillaRowsByCurrentDateTime);
+  const seen = new Set();
+  const unique = [];
+  sorted.forEach(row => {
+    const interno = String(row?.interno || "").trim();
+    if (!interno || seen.has(interno)) return;
+    seen.add(interno);
+    unique.push(row);
+  });
+  return unique;
+}
+
+function fillManualDispatchInternoList(){
+  if (!manualDispatchInternoList) return;
+  const rows = getManualDispatchVehicleRows();
+  manualDispatchInternoList.innerHTML = rows.map(row => {
+    const interno = String(row?.interno || "").trim();
+    const base = formatBaseLabel(getBaseCanonical(row?.base || "") || String(row?.base || "").trim());
+    const mid = String(row?.mid || "").trim();
+    return `<option value="${escapeHtml(interno)}" label="${escapeHtml(`${base} | MID ${mid || "-"}`)}"></option>`;
+  }).join("");
+}
+
+function findManualDispatchVehicleByInterno(internoValue){
+  const interno = String(internoValue || "").trim();
+  if (!interno) return null;
+  const rows = getManualDispatchVehicleRows();
+  return rows.find(row => String(row?.interno || "").trim() === interno) || null;
+}
+
+function fillManualDispatchConductorList(baseValue){
+  if (!manualDispatchConductorList) return;
+  const baseCanonical = getBaseCanonical(baseValue || "");
+  const enabled = (driversCatalogRows || [])
+    .filter(row => String(row?.status || "").trim().toUpperCase() === "ENABLED")
+    .filter(row => !baseCanonical || getCsvDriverBase(row) === baseCanonical);
+  manualDispatchConductorList.innerHTML = enabled.map(row => {
+    const nombre = String(row?.nombre || "").trim();
+    const drId = String(row?.dr_id || "").trim();
+    const value = `${nombre} | ${drId}`;
+    return `<option value="${escapeHtml(value)}"></option>`;
+  }).join("");
+}
+
+function applyManualDispatchConductorSelection(){
+  if (!manualDispatchDriverId) return;
+  const conductor = String(manualDispatchConductorName?.value || "").trim();
+  const base = String(manualDispatchBase?.value || "").trim();
+  const fromPipe = conductor.includes("|")
+    ? String(conductor.split("|").pop() || "").trim()
+    : "";
+  const drvId = fromPipe || findDriverIdByName(conductor, base);
+  manualDispatchDriverId.value = drvId || "";
+}
+
+function applyManualDispatchVehicleSelection(){
+  const row = findManualDispatchVehicleByInterno(manualDispatchInterno?.value || "");
+  if (!row) {
+    if (manualDispatchBase) manualDispatchBase.value = "";
+    if (manualDispatchMid) manualDispatchMid.value = "";
+    fillManualDispatchConductorList("");
+    applyManualDispatchConductorSelection();
+    return;
+  }
+  const base = getBaseCanonical(row?.base || "") || String(row?.base || "").trim();
+  const mid = String(row?.mid || "").trim();
+  if (manualDispatchBase) manualDispatchBase.value = base;
+  if (manualDispatchMid) manualDispatchMid.value = mid;
+  fillManualDispatchConductorList(base);
+  const conductorEnFila = String(row?.conductor || "").trim();
+  if (conductorEnFila && manualDispatchConductorName && !String(manualDispatchConductorName.value || "").trim()) {
+    const baseCanonical = getBaseCanonical(base || "");
+    const drvIdFromRow = findDriverIdByName(conductorEnFila, baseCanonical);
+    manualDispatchConductorName.value = drvIdFromRow
+      ? `${conductorEnFila} | ${drvIdFromRow}`
+      : conductorEnFila;
+  }
+  applyManualDispatchConductorSelection();
+}
+
+function openManualDispatchModal(){
+  if (!manualDispatchModal || !btnManualDispatchCancel || !btnManualDispatchConfirm) {
+    return Promise.resolve({ confirmed: false });
+  }
+  fillManualDispatchInternoList();
+  fillManualDispatchConductorList("");
+  if (manualDispatchInterno) manualDispatchInterno.value = "";
+  if (manualDispatchBase) manualDispatchBase.value = "";
+  if (manualDispatchMid) manualDispatchMid.value = "";
+  if (manualDispatchConductorName) manualDispatchConductorName.value = "";
+  if (manualDispatchDriverId) manualDispatchDriverId.value = "";
+  if (manualDispatchObs) manualDispatchObs.value = "";
+  if (manualDispatchItinerarySelect) {
+    manualDispatchItinerarySelect.innerHTML = buildItineraryOptionsHtml();
+    manualDispatchItinerarySelect.value = "";
+  }
+  manualDispatchModal.classList.remove("hidden");
+  setTimeout(() => manualDispatchInterno?.focus(), 10);
+  return new Promise(resolve => {
+    manualDispatchModalResolver = resolve;
+  });
+}
+
 function getSwapRowLabel(rowObj, keys = {}){
   const row = rowObj || {};
   const n = keys.numeroKey ? String(row[keys.numeroKey] || "").trim() : "";
@@ -619,6 +1151,7 @@ function applyAuthState(session){
     currentUserBase = getBaseCanonical(baseFromMetadata || baseFromEmail);
     if (!currentUserRole && baseFromMetadata) currentUserRole = "base_operator";
     if (!currentUserRole && baseFromEmail) currentUserRole = "base_operator";
+    loadOutOfListVehiclesLocal();
 
     authUserLabel.textContent = isSuperAdmin()
       ? `Usuario: ${currentUserEmail} (ADMIN)`
@@ -660,6 +1193,8 @@ function applyAuthState(session){
     setSyncStatus("warn", "Sin sesion");
     updateExportAccess();
     appInitialized = false;
+    outOfListVehicles = [];
+    rebuildOutOfListVehicleIndex();
     applyRoleRestrictions();
   }
 }
@@ -736,9 +1271,49 @@ if (swapModal) {
 if (btnNoteCancel) btnNoteCancel.onclick = () => closeNoteModal("cancel", noteModalInput?.value || "");
 if (btnNoteSave) btnNoteSave.onclick = () => closeNoteModal("save", noteModalInput?.value || "");
 if (btnNoteClear) btnNoteClear.onclick = () => closeNoteModal("clear", "");
+if (btnDispatchCancel) btnDispatchCancel.onclick = () => closeDispatchModal(false);
+if (btnDispatchConfirm) btnDispatchConfirm.onclick = () => closeDispatchModal(true);
+if (btnCancelDispatchCancel) btnCancelDispatchCancel.onclick = () => closeCancelDispatchModal(false);
+if (btnCancelDispatchConfirm) btnCancelDispatchConfirm.onclick = () => closeCancelDispatchModal(true);
+if (btnRemoveFromListCancel) btnRemoveFromListCancel.onclick = () => closeRemoveFromListModal(false);
+if (btnRemoveFromListConfirm) btnRemoveFromListConfirm.onclick = () => closeRemoveFromListModal(true);
+if (btnEditPlanillaCancel) btnEditPlanillaCancel.onclick = () => closeEditPlanillaModal(false);
+if (btnEditPlanillaSave) btnEditPlanillaSave.onclick = () => closeEditPlanillaModal(true);
+if (btnManualDispatchCancel) btnManualDispatchCancel.onclick = () => closeManualDispatchModal(false);
+if (btnManualDispatchConfirm) btnManualDispatchConfirm.onclick = () => closeManualDispatchModal(true);
+if (btnManualDispatch) btnManualDispatch.onclick = () => handleManualDispatch();
+if (manualDispatchInterno) manualDispatchInterno.addEventListener("change", applyManualDispatchVehicleSelection);
+if (manualDispatchInterno) manualDispatchInterno.addEventListener("input", applyManualDispatchVehicleSelection);
+if (manualDispatchConductorName) manualDispatchConductorName.addEventListener("change", applyManualDispatchConductorSelection);
+if (manualDispatchConductorName) manualDispatchConductorName.addEventListener("input", applyManualDispatchConductorSelection);
 if (noteModal) {
   noteModal.addEventListener("click", (ev) => {
     if (ev.target === noteModal) closeNoteModal("cancel", noteModalInput?.value || "");
+  });
+}
+if (dispatchModal) {
+  dispatchModal.addEventListener("click", (ev) => {
+    if (ev.target === dispatchModal) closeDispatchModal(false);
+  });
+}
+if (cancelDispatchModal) {
+  cancelDispatchModal.addEventListener("click", (ev) => {
+    if (ev.target === cancelDispatchModal) closeCancelDispatchModal(false);
+  });
+}
+if (removeFromListModal) {
+  removeFromListModal.addEventListener("click", (ev) => {
+    if (ev.target === removeFromListModal) closeRemoveFromListModal(false);
+  });
+}
+if (editPlanillaModal) {
+  editPlanillaModal.addEventListener("click", (ev) => {
+    if (ev.target === editPlanillaModal) closeEditPlanillaModal(false);
+  });
+}
+if (manualDispatchModal) {
+  manualDispatchModal.addEventListener("click", (ev) => {
+    if (ev.target === manualDispatchModal) closeManualDispatchModal(false);
   });
 }
 document.addEventListener("keydown", (ev) => {
@@ -750,8 +1325,47 @@ document.addEventListener("keydown", (ev) => {
     closeNoteModal("cancel", noteModalInput?.value || "");
     return;
   }
+  if (ev.key === "Escape" && dispatchModal && !dispatchModal.classList.contains("hidden")) {
+    closeDispatchModal(false);
+    return;
+  }
   if (ev.key === "Enter" && noteModal && !noteModal.classList.contains("hidden") && ev.ctrlKey) {
     closeNoteModal("save", noteModalInput?.value || "");
+  }
+  if (ev.key === "Enter" && dispatchModal && !dispatchModal.classList.contains("hidden")) {
+    closeDispatchModal(true);
+    return;
+  }
+  if (ev.key === "Escape" && cancelDispatchModal && !cancelDispatchModal.classList.contains("hidden")) {
+    closeCancelDispatchModal(false);
+    return;
+  }
+  if (ev.key === "Enter" && cancelDispatchModal && !cancelDispatchModal.classList.contains("hidden") && ev.ctrlKey) {
+    closeCancelDispatchModal(true);
+    return;
+  }
+  if (ev.key === "Escape" && removeFromListModal && !removeFromListModal.classList.contains("hidden")) {
+    closeRemoveFromListModal(false);
+    return;
+  }
+  if (ev.key === "Enter" && removeFromListModal && !removeFromListModal.classList.contains("hidden") && ev.ctrlKey) {
+    closeRemoveFromListModal(true);
+    return;
+  }
+  if (ev.key === "Escape" && editPlanillaModal && !editPlanillaModal.classList.contains("hidden")) {
+    closeEditPlanillaModal(false);
+    return;
+  }
+  if (ev.key === "Enter" && editPlanillaModal && !editPlanillaModal.classList.contains("hidden") && ev.ctrlKey) {
+    closeEditPlanillaModal(true);
+    return;
+  }
+  if (ev.key === "Escape" && manualDispatchModal && !manualDispatchModal.classList.contains("hidden")) {
+    closeManualDispatchModal(false);
+    return;
+  }
+  if (ev.key === "Enter" && manualDispatchModal && !manualDispatchModal.classList.contains("hidden")) {
+    closeManualDispatchModal(true);
   }
 });
 
@@ -1594,6 +2208,7 @@ async function deleteNovedadInSupabase(id){
 let rows = [];
 let currentBase = "";
 let driversByBase = {};     // { "2": ["NOMBRE", ...] }
+let driversCatalogRows = []; // [{dr_id, cedula, fleet, nombre, status, email, celular, base}]
 let assignedByBase = {};    // { "2": Set(["..."]) }
 let basesCatalog = [];
 let isLoadingDrivers = false;
@@ -1602,18 +2217,35 @@ let planillaAfiliadosRows = [];
 let planillaAfiliadosLoading = false;
 let planillaAfiliadosLoadedOnce = false;
 let planillaLastLoadedAt = 0;
+let planillaRowsRevision = 0;
+let planillaDispatchResolutionCache = {
+  rowsRef: null,
+  revision: -1,
+  resolvedByKey: new Map()
+};
 let planillaAutoRefreshTimer = null;
+let currentPlanillaTableName = PLANILLA_TABLE_NAME;
 let aeropuertoSelectedItinerary = "";
 let sanDiegoSelectedItinerary = "";
 let nutibaraSelectedItinerary = "";
 let lastAeropuertoRenderedRows = [];
+let lastTerminalNorteRenderedRows = [];
 let lastSanDiegoRenderedRows = [];
 let lastNutibaraRenderedRows = [];
+const dispatchingRowUiIds = new Set();
+let outOfListVehicles = [];
+let outOfListVehicleKeySet = new Set();
 let operativoViewMode = "operativo";
-const ARRIVALS_PANEL_TAB_IDS = ["llegadas-aeropuerto", "llegadas-san-diego", "llegadas-nutibara"];
+const ARRIVALS_PANEL_TAB_IDS = ["llegadas-aeropuerto", "llegadas-terminalnorte", "llegadas-san-diego", "llegadas-nutibara", "no-despacho", "fuera-lista", "conductores-csv", "planilla-afiliados"];
 const ARRIVALS_ONLY_APP = true;
 const PLANILLA_REFRESH_MAX_AGE_MS = 15000;
 const PLANILLA_AUTO_REFRESH_MS = 30000;
+const TERMINAL_NORTE_ITINERARY = "Aeropuerto-autopista-terminalnorte";
+const NO_DESPACHO_THRESHOLD_MINUTES = 210; // 3 h 30 min
+const ARRIVAL_DEDUPE_WINDOW_MINUTES = 30; // Ventana para consolidar llegadas repetidas
+const DISPATCH_MATCH_TOLERANCE_MINUTES = 2; // tolerancia de reloj entre llegada y despacho
+const DISPATCH_MAX_AFTER_ARRIVAL_MINUTES = 8 * 60; // despacho maximo esperado tras llegada
+const ARRIVAL_POINT_TYPES = new Set(["101", "104", "110", "129"]);
 
 // Estructura para novedades (conductores con estado)
 let novedades = []; // Array de objetos { nombre, base, estado, fecha }
@@ -1658,6 +2290,13 @@ const operativoInner = document.getElementById("operativoInner");
 const startBaseSelect = document.getElementById("startBase");
 const basesList = document.getElementById("basesList");
 const csvStatus = document.getElementById("csvStatus");
+const btnRefreshConductoresCsv = document.getElementById("btnRefreshConductoresCsv");
+const conductoresCsvSearch = document.getElementById("conductoresCsvSearch");
+const conductoresCsvBaseFilter = document.getElementById("conductoresCsvBaseFilter");
+const conductoresCsvStatusFilter = document.getElementById("conductoresCsvStatusFilter");
+const conductoresCsvCount = document.getElementById("conductoresCsvCount");
+const conductoresCsvStatus = document.getElementById("conductoresCsvStatus");
+const conductoresCsvBody = document.getElementById("conductoresCsvBody");
 const gridHead = document.querySelector('#grid thead');
 const gridBody = document.querySelector('#grid tbody');
 const novedadesBody = document.getElementById('novedadesBody');
@@ -1706,6 +2345,7 @@ const planillaFilterInterno = document.getElementById("planillaFilterInterno");
 const planillaFilterBase = document.getElementById("planillaFilterBase");
 const planillaFilterTipo = document.getElementById("planillaFilterTipo");
 const planillaFilterHoraLlegada = document.getElementById("planillaFilterHoraLlegada");
+const planillaTableSource = document.getElementById("planillaTableSource");
 const btnRefreshPlanilla = document.getElementById("btnRefreshPlanilla");
 const btnDownloadLlegadas = document.getElementById("btnDownloadLlegadas");
 const btnDownloadDespachos = document.getElementById("btnDownloadDespachos");
@@ -1716,6 +2356,7 @@ const planillaBody = document.getElementById("planillaBody");
 const btnRefreshLlegadasAeropuerto = document.getElementById("btnRefreshLlegadasAeropuerto");
 const aeropuertoSearch = document.getElementById("aeropuertoSearch");
 const aeropuertoEstadoFilter = document.getElementById("aeropuertoEstadoFilter");
+const aeropuertoBaseFilter = document.getElementById("aeropuertoBaseFilter");
 const aeropuertoUploadFrom = document.getElementById("aeropuertoUploadFrom");
 const aeropuertoUploadTo = document.getElementById("aeropuertoUploadTo");
 const btnDownloadLlegadasAeropuerto = document.getElementById("btnDownloadLlegadasAeropuerto");
@@ -1724,9 +2365,21 @@ const llegadasAeropuertoCount = document.getElementById("llegadasAeropuertoCount
 const llegadasAeropuertoStatus = document.getElementById("llegadasAeropuertoStatus");
 const llegadasAeropuertoBody = document.getElementById("llegadasAeropuertoBody");
 const llegadasAeropuertoTabs = document.getElementById("llegadasAeropuertoTabs");
+const btnRefreshLlegadasTerminalNorte = document.getElementById("btnRefreshLlegadasTerminalNorte");
+const terminalNorteSearch = document.getElementById("terminalNorteSearch");
+const terminalNorteEstadoFilter = document.getElementById("terminalNorteEstadoFilter");
+const terminalNorteBaseFilter = document.getElementById("terminalNorteBaseFilter");
+const terminalNorteUploadFrom = document.getElementById("terminalNorteUploadFrom");
+const terminalNorteUploadTo = document.getElementById("terminalNorteUploadTo");
+const btnDownloadLlegadasTerminalNorte = document.getElementById("btnDownloadLlegadasTerminalNorte");
+const llegadasTerminalNorteTitle = document.getElementById("llegadasTerminalNorteTitle");
+const llegadasTerminalNorteCount = document.getElementById("llegadasTerminalNorteCount");
+const llegadasTerminalNorteStatus = document.getElementById("llegadasTerminalNorteStatus");
+const llegadasTerminalNorteBody = document.getElementById("llegadasTerminalNorteBody");
 const btnRefreshLlegadasSanDiego = document.getElementById("btnRefreshLlegadasSanDiego");
 const sanDiegoSearch = document.getElementById("sanDiegoSearch");
 const sanDiegoEstadoFilter = document.getElementById("sanDiegoEstadoFilter");
+const sanDiegoBaseFilter = document.getElementById("sanDiegoBaseFilter");
 const sanDiegoUploadFrom = document.getElementById("sanDiegoUploadFrom");
 const sanDiegoUploadTo = document.getElementById("sanDiegoUploadTo");
 const btnDownloadLlegadasSanDiego = document.getElementById("btnDownloadLlegadasSanDiego");
@@ -1738,6 +2391,7 @@ const llegadasSanDiegoTabs = document.getElementById("llegadasSanDiegoTabs");
 const btnRefreshLlegadasNutibara = document.getElementById("btnRefreshLlegadasNutibara");
 const nutibaraSearch = document.getElementById("nutibaraSearch");
 const nutibaraEstadoFilter = document.getElementById("nutibaraEstadoFilter");
+const nutibaraBaseFilter = document.getElementById("nutibaraBaseFilter");
 const nutibaraUploadFrom = document.getElementById("nutibaraUploadFrom");
 const nutibaraUploadTo = document.getElementById("nutibaraUploadTo");
 const btnDownloadLlegadasNutibara = document.getElementById("btnDownloadLlegadasNutibara");
@@ -1746,6 +2400,20 @@ const llegadasNutibaraCount = document.getElementById("llegadasNutibaraCount");
 const llegadasNutibaraStatus = document.getElementById("llegadasNutibaraStatus");
 const llegadasNutibaraBody = document.getElementById("llegadasNutibaraBody");
 const llegadasNutibaraTabs = document.getElementById("llegadasNutibaraTabs");
+const btnRefreshNoDespacho = document.getElementById("btnRefreshNoDespacho");
+const noDespachoSearch = document.getElementById("noDespachoSearch");
+const noDespachoPuntoFilter = document.getElementById("noDespachoPuntoFilter");
+const noDespachoBaseFilter = document.getElementById("noDespachoBaseFilter");
+const noDespachoFrom = document.getElementById("noDespachoFrom");
+const noDespachoTo = document.getElementById("noDespachoTo");
+const noDespachoTitle = document.getElementById("noDespachoTitle");
+const noDespachoCount = document.getElementById("noDespachoCount");
+const noDespachoStatus = document.getElementById("noDespachoStatus");
+const noDespachoBody = document.getElementById("noDespachoBody");
+const fueraListaSearch = document.getElementById("fueraListaSearch");
+const fueraListaCount = document.getElementById("fueraListaCount");
+const fueraListaBody = document.getElementById("fueraListaBody");
+const fueraListaStatus = document.getElementById("fueraListaStatus");
 
 /* ===================== UTIL ===================== */
 function norm(s){ return (s||"").toString().trim().toUpperCase(); }
@@ -1769,6 +2437,75 @@ function sameBase(a, b){
   const ca = getBaseCanonical(a);
   const cb = getBaseCanonical(b);
   return !!ca && !!cb && ca === cb;
+}
+
+function getCsvDriverBase(row){
+  const rawEmail = String(row?.email || "").trim();
+  const fromEmail = rawEmail.match(/BASE\s*(\d+)/i)?.[1] || "";
+  const rawBase = String(row?.base || "").trim();
+  const raw = fromEmail || rawBase;
+  return getBaseCanonical(raw);
+}
+
+function getFilteredDriversCatalogRows(){
+  const rows = Array.isArray(driversCatalogRows) ? driversCatalogRows : [];
+  const term = String(conductoresCsvSearch?.value || "").trim().toLowerCase();
+  const base = String(conductoresCsvBaseFilter?.value || "").trim();
+  const status = String(conductoresCsvStatusFilter?.value || "ENABLED").trim().toUpperCase();
+  return rows.filter(row => {
+    const rowBase = getCsvDriverBase(row);
+    const rowStatus = String(row?.status || "").trim().toUpperCase();
+    if (base && rowBase !== base) return false;
+    if (status && rowStatus !== status) return false;
+    if (!term) return true;
+    const tokens = [
+      row?.dr_id,
+      row?.cedula,
+      row?.nombre,
+      row?.status,
+      row?.email,
+      row?.celular,
+      rowBase
+    ];
+    return tokens.join(" ").toLowerCase().includes(term);
+  });
+}
+
+function refreshConductoresCsvBaseOptions(){
+  if (!conductoresCsvBaseFilter) return;
+  const prev = String(conductoresCsvBaseFilter.value || "");
+  const setBases = new Set();
+  (driversCatalogRows || []).forEach(row => {
+    const base = getCsvDriverBase(row);
+    if (base) setBases.add(base);
+  });
+  const options = Array.from(setBases).sort((a, b) => Number(a) - Number(b));
+  conductoresCsvBaseFilter.innerHTML = `<option value="">Todas las bases</option>${
+    options.map(base => `<option value="${escapeHtml(base)}">${escapeHtml(formatBaseLabel(base))}</option>`).join("")
+  }`;
+  if (prev && options.includes(prev)) conductoresCsvBaseFilter.value = prev;
+}
+
+function renderConductoresCsvTab(){
+  if (!conductoresCsvBody) return;
+  const filtered = getFilteredDriversCatalogRows();
+  if (conductoresCsvCount) conductoresCsvCount.textContent = String(filtered.length);
+  if (!filtered.length) {
+    conductoresCsvBody.innerHTML = `<tr><td colspan="7" class="muted" style="text-align:center;padding:12px">Sin conductores para los filtros.</td></tr>`;
+    return;
+  }
+  conductoresCsvBody.innerHTML = filtered.map(row => {
+    const base = getCsvDriverBase(row);
+    return `<tr>
+      <td>${escapeHtml(formatPlanillaCell(row?.dr_id))}</td>
+      <td>${escapeHtml(formatPlanillaCell(row?.cedula))}</td>
+      <td>${escapeHtml(base ? formatBaseLabel(base) : "-")}</td>
+      <td>${escapeHtml(formatPlanillaCell(row?.nombre))}</td>
+      <td>${escapeHtml(formatPlanillaCell(row?.status))}</td>
+      <td>${escapeHtml(formatPlanillaCell(row?.email))}</td>
+      <td>${escapeHtml(formatPlanillaCell(row?.celular))}</td>
+    </tr>`;
+  }).join("");
 }
 
 function updateWorkflowGuide(){
@@ -2012,6 +2749,36 @@ function formatPlanillaCell(value){
   return String(value);
 }
 
+function getPlanillaRowStableKey(row){
+  if (!row || typeof row !== "object") return "";
+  const id = String(row?.id ?? "").trim();
+  if (id) return `id:${id}`;
+  const cruce = String(row?.cruce_key ?? "").trim();
+  if (cruce) return `cruce:${cruce}`;
+  const parts = [
+    String(row?.tipo_llegada ?? "").trim(),
+    String(row?.base ?? "").trim(),
+    String(row?.interno ?? "").trim(),
+    String(row?.mid ?? "").trim(),
+    String(row?.hora_llegada ?? "").trim(),
+    String(row?.generated_at ?? row?.generado_en ?? row?.created_at ?? "").trim()
+  ];
+  return `row:${parts.join("|")}`;
+}
+
+function getRowVehicleKey(row){
+  const interno = formatPlanillaCell(row?.interno).trim();
+  const mid = formatPlanillaCell(row?.mid).trim();
+  return interno || mid || "";
+}
+
+function invalidatePlanillaDispatchResolutionCache(){
+  planillaRowsRevision += 1;
+  planillaDispatchResolutionCache.rowsRef = null;
+  planillaDispatchResolutionCache.revision = -1;
+  planillaDispatchResolutionCache.resolvedByKey = new Map();
+}
+
 function mapTipoLlegada(value){
   const code = String(value ?? "").trim();
   if (code === "104") return "Llegada Aeropuerto";
@@ -2020,19 +2787,81 @@ function mapTipoLlegada(value){
   return code || "-";
 }
 
-const PLANILLA_VIEW_COLUMNS = [
-  { title: "Hora llegada", value: (row) => row?.hora_llegada },
-  { title: "Tipo", value: (row) => mapTipoLlegada(row?.tipo_llegada) },
-  { title: "Base", value: (row) => row?.base },
-  { title: "Interno", value: (row) => row?.interno },
-  { title: "Itinerario llegada", value: (row) => row?.itinerario_llegada },
-  { title: "Hora despacho", value: (row) => row?.hora_despacho },
-  { title: "Itinerario despacho", value: (row) => row?.itinerario_despacho },
-  { title: "Conductor", value: (row) => row?.conductor },
-  { title: "Estado", value: (row) => row?.estado },
-  { title: "Espera", value: (row) => row?.espera },
-  { title: "Generado en", value: (row) => row?.generado_en }
-];
+function getPlanillaDisplayColumnKeys(rowsInput){
+  const rows = Array.isArray(rowsInput) ? rowsInput : [];
+  const preferred = currentPlanillaTableName === PLANILLA_TABLE_NAME ? PLANILLA_AFILIADOS_2_COLUMNS : [];
+  const ordered = [];
+  const seen = new Set();
+  preferred.forEach(col => {
+    const k = String(col || "").trim();
+    if (!k || seen.has(k)) return;
+    seen.add(k);
+    ordered.push(k);
+  });
+  rows.forEach(row => {
+    if (!row || typeof row !== "object") return;
+    Object.keys(row).forEach(key => {
+      const k = String(key || "").trim();
+      if (!k || seen.has(k)) return;
+      seen.add(k);
+      ordered.push(k);
+    });
+  });
+  return ordered;
+}
+
+function getPlanillaSelectColumnsForCurrentTable(){
+  if (currentPlanillaTableName === PLANILLA_TABLE_NAME) {
+    return PLANILLA_AFILIADOS_2_COLUMNS.join(",");
+  }
+  return "*";
+}
+
+async function fetchPlanillaOptionalColumn(columnName){
+  const col = String(columnName || "").trim();
+  if (!col) return null;
+  try {
+    const { data, error } = await planillaSupabaseClient
+      .from(currentPlanillaTableName)
+      .select(`id,${col}`)
+      .order("hora_llegada", { ascending: false, nullsFirst: false })
+      .limit(2000);
+    if (error) return null;
+    return Array.isArray(data) ? data : [];
+  } catch (e) {
+    return null;
+  }
+}
+
+async function enrichPlanillaRowsWithOptionalColumns(rowsInput){
+  const rows = Array.isArray(rowsInput) ? rowsInput : [];
+  if (!rows.length) return rows;
+  const byId = new Map();
+  rows.forEach(row => {
+    const id = row?.id;
+    if (id !== undefined && id !== null) byId.set(String(id), row);
+  });
+  for (const col of PLANILLA_OPTIONAL_REG_ID_COLUMNS) {
+    const data = await fetchPlanillaOptionalColumn(col);
+    if (!Array.isArray(data) || !data.length) continue;
+    data.forEach(item => {
+      const id = item?.id;
+      if (id === undefined || id === null) return;
+      const row = byId.get(String(id));
+      if (!row) return;
+      const value = String(item?.[col] || "").trim();
+      if (!value) return;
+      setRowDispatchRegId(row, value);
+    });
+  }
+  return rows;
+}
+
+function formatPlanillaHeaderLabel(key){
+  const raw = String(key || "").trim();
+  if (!raw) return "-";
+  return raw.replace(/_/g, " ");
+}
 
 function getPlanillaFilteredRows(rowsInput){
   const rowsList = Array.isArray(rowsInput) ? rowsInput : [];
@@ -2055,10 +2884,28 @@ function getPlanillaFilteredRows(rowsInput){
 function parsePlanillaDateTime(value){
   const raw = String(value || "").trim();
   if (!raw) return null;
-  const normalized = raw.includes("T") ? raw : raw.replace(" ", "T");
-  const date = new Date(normalized);
-  if (Number.isNaN(date.getTime())) return null;
-  return date;
+
+  // 1) Formatos tipo ISO: yyyy-mm-dd hh:mm[:ss[.ms]] o con T.
+  const normalizedIsoLike = raw.includes("T") ? raw : raw.replace(" ", "T");
+  let date = new Date(normalizedIsoLike);
+  if (!Number.isNaN(date.getTime())) return date;
+
+  // 2) Formatos latinos: dd/mm/yyyy hh:mm[:ss]
+  const latin = raw.match(
+    /^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:[ T](\d{1,2}):(\d{1,2})(?::(\d{1,2}))?)?$/
+  );
+  if (latin) {
+    const dd = Number(latin[1]);
+    const mm = Number(latin[2]);
+    const yyyy = Number(latin[3]);
+    const hh = Number(latin[4] || 0);
+    const mi = Number(latin[5] || 0);
+    const ss = Number(latin[6] || 0);
+    date = new Date(yyyy, Math.max(0, mm - 1), dd, hh, mi, ss);
+    if (!Number.isNaN(date.getTime())) return date;
+  }
+
+  return null;
 }
 
 function isSameLocalDate(a, b){
@@ -2069,8 +2916,8 @@ function isSameLocalDate(a, b){
 
 function comparePlanillaRowsByCurrentDateTime(a, b){
   const now = new Date();
-  const aDate = parsePlanillaDateTime(a?.hora_llegada || a?.generado_en || a?.hora_despacho);
-  const bDate = parsePlanillaDateTime(b?.hora_llegada || b?.generado_en || b?.hora_despacho);
+  const aDate = getLlegadaDateForMatching(a) || parsePlanillaDateTime(a?.hora_despacho);
+  const bDate = getLlegadaDateForMatching(b) || parsePlanillaDateTime(b?.hora_despacho);
   if (!aDate && !bDate) return 0;
   if (!aDate) return 1;
   if (!bDate) return -1;
@@ -2117,14 +2964,127 @@ function getPlanillaUploadDateText(row){
   return formatPlanillaDateTime(row?.generado_en || row?.created_at);
 }
 
+function getLlegadaDateForMatching(row){
+  return parsePlanillaDateTime(row?.hora_llegada || row?.generado_en || row?.created_at);
+}
+
+function getRawDespachoDate(row){
+  return parsePlanillaDateTime(row?.hora_despacho);
+}
+
+function isDispatchChronologicallyValid(despDate, llegadaDate, nextLlegadaDate){
+  if (!(despDate instanceof Date) || Number.isNaN(despDate.getTime())) return false;
+  if (!(llegadaDate instanceof Date) || Number.isNaN(llegadaDate.getTime())) return true;
+  const tolMs = DISPATCH_MATCH_TOLERANCE_MINUTES * 60000;
+  const maxAfterMs = DISPATCH_MAX_AFTER_ARRIVAL_MINUTES * 60000;
+  const despMs = despDate.getTime();
+  const llegadaMs = llegadaDate.getTime();
+  if (despMs < (llegadaMs - tolMs)) return false;
+  if ((despMs - llegadaMs) > maxAfterMs) return false;
+  if (nextLlegadaDate instanceof Date && !Number.isNaN(nextLlegadaDate.getTime())) {
+    const nextMs = nextLlegadaDate.getTime();
+    if (despMs > (nextMs + tolMs)) return false;
+  }
+  return true;
+}
+
+function ensurePlanillaDispatchResolutionCache(){
+  if (planillaDispatchResolutionCache.rowsRef === planillaAfiliadosRows
+    && planillaDispatchResolutionCache.revision === planillaRowsRevision) {
+    return;
+  }
+  const rows = Array.isArray(planillaAfiliadosRows) ? planillaAfiliadosRows : [];
+  const byVehicle = new Map();
+  rows.forEach(row => {
+    const vehicleKey = getRowVehicleKey(row);
+    if (!vehicleKey) return;
+    if (!byVehicle.has(vehicleKey)) {
+      byVehicle.set(vehicleKey, { arrivals: [], dispatches: [] });
+    }
+    const bucket = byVehicle.get(vehicleKey);
+    const llegadaDate = getLlegadaDateForMatching(row);
+    if (llegadaDate) bucket.arrivals.push({ row, timeMs: llegadaDate.getTime() });
+    const despachoDate = getRawDespachoDate(row);
+    if (despachoDate) bucket.dispatches.push({ row, date: despachoDate, timeMs: despachoDate.getTime() });
+  });
+
+  const resolvedByKey = new Map();
+  byVehicle.forEach(bucket => {
+    bucket.arrivals.sort((a, b) => a.timeMs - b.timeMs);
+    bucket.dispatches.sort((a, b) => a.timeMs - b.timeMs);
+    const assignedDispatchByArrivalIndex = new Array(bucket.arrivals.length).fill(null);
+    const tolMs = DISPATCH_MATCH_TOLERANCE_MINUTES * 60000;
+    const maxAfterMs = DISPATCH_MAX_AFTER_ARRIVAL_MINUTES * 60000;
+
+    // Emparejamiento 1:1: cada despacho se pega a la llegada mas reciente compatible.
+    bucket.dispatches.forEach(dispatchItem => {
+      let targetIdx = -1;
+      for (let i = bucket.arrivals.length - 1; i >= 0; i--) {
+        if (assignedDispatchByArrivalIndex[i]) continue;
+        const arrivalMs = bucket.arrivals[i].timeMs;
+        const diff = dispatchItem.timeMs - arrivalMs;
+        if (arrivalMs > (dispatchItem.timeMs + tolMs)) continue; // llegada posterior al despacho
+        if (diff < -tolMs) continue; // despacho demasiado antes de llegada
+        if (diff > maxAfterMs) continue; // despacho demasiado tarde para esa llegada
+        targetIdx = i;
+        break;
+      }
+      if (targetIdx >= 0) {
+        assignedDispatchByArrivalIndex[targetIdx] = dispatchItem;
+      }
+    });
+
+    bucket.arrivals.forEach((entry, idx) => {
+      const row = entry.row;
+      const rowKey = getPlanillaRowStableKey(row);
+      if (!rowKey) return;
+      const arrivalDate = new Date(entry.timeMs);
+      const matched = assignedDispatchByArrivalIndex[idx];
+      if (matched?.date && isDispatchChronologicallyValid(matched.date, arrivalDate, null)) {
+        resolvedByKey.set(rowKey, {
+          date: matched.date,
+          sourceRow: matched.row
+        });
+        return;
+      }
+      const directDesp = getRawDespachoDate(row);
+      if (isDispatchChronologicallyValid(directDesp, arrivalDate, null)) {
+        resolvedByKey.set(rowKey, {
+          date: directDesp,
+          sourceRow: row
+        });
+        return;
+      }
+      resolvedByKey.set(rowKey, null);
+    });
+  });
+
+  planillaDispatchResolutionCache.rowsRef = planillaAfiliadosRows;
+  planillaDispatchResolutionCache.revision = planillaRowsRevision;
+  planillaDispatchResolutionCache.resolvedByKey = resolvedByKey;
+}
+
+function getResolvedDispatchInfo(row){
+  const rowKey = getPlanillaRowStableKey(row);
+  if (!rowKey) return null;
+  ensurePlanillaDispatchResolutionCache();
+  if (planillaDispatchResolutionCache.resolvedByKey.has(rowKey)) {
+    return planillaDispatchResolutionCache.resolvedByKey.get(rowKey) || null;
+  }
+  const direct = getRawDespachoDate(row);
+  if (!direct) return null;
+  return { date: direct, sourceRow: row };
+}
+
 function hasValidDespacho(row){
-  const raw = String(row?.hora_despacho ?? "").trim();
-  return !!raw && raw !== "-";
+  const info = getResolvedDispatchInfo(row);
+  return !!(info?.date instanceof Date);
 }
 
 function getDespachoDateTimeText(row){
-  if (!hasValidDespacho(row)) return "-";
-  return formatPlanillaDateTime(row?.hora_despacho);
+  const info = getResolvedDispatchInfo(row);
+  if (!info?.date) return "-";
+  return formatPlanillaDateTime(info.date);
 }
 
 function getOperacionEstadoText(row){
@@ -2147,8 +3107,31 @@ function getItinerarioLlegadaText(row){
 }
 
 function getItinerarioDespachoText(row){
-  const itin = formatPlanillaCell(row?.itinerario_despacho).trim();
+  const info = getResolvedDispatchInfo(row);
+  const sourceRow = info?.sourceRow || row;
+  const itin = formatPlanillaCell(sourceRow?.itinerario_despacho).trim();
   return itin || "-";
+}
+
+function getPlanillaResolvedDispatchSourceRow(row){
+  const info = getResolvedDispatchInfo(row);
+  return info?.sourceRow || row;
+}
+
+function getPlanillaDisplayValueByColumn(row, columnName){
+  const col = String(columnName || "").trim().toLowerCase();
+  if (col === "hora_despacho") return getDespachoDateTimeText(row);
+  if (col === "itinerario_despacho") return getItinerarioDespachoText(row);
+  if (col === "estado") return getOperacionEstadoText(row);
+  if (col === "conductor") {
+    const source = getPlanillaResolvedDispatchSourceRow(row);
+    return formatPlanillaCell(source?.conductor || row?.conductor);
+  }
+  if (col === "driver_id") {
+    const source = getPlanillaResolvedDispatchSourceRow(row);
+    return formatPlanillaCell(source?.driver_id || row?.driver_id);
+  }
+  return formatPlanillaCell(row?.[columnName]);
 }
 
 function getItinerarioLlegadaCellHtml(row){
@@ -2267,7 +3250,7 @@ function getRowsFilteredByEsperaOperationalDay(rowsInput){
   yesterday.setDate(yesterday.getDate() - 1);
 
   return rows.filter(row => {
-    const date = parsePlanillaDateTime(row?.hora_llegada || row?.generado_en || row?.hora_despacho);
+    const date = getLlegadaReferenceDate(row);
     if (!date) return false;
 
     if (isSameLocalCalendarDate(date, now)) return true;
@@ -2284,7 +3267,7 @@ function getRowsFilteredBySearchTerm(rowsInput, searchTerm){
     const tokens = [
       formatPlanillaDateTime(row?.hora_llegada),
       getPlanillaUploadDateText(row),
-      formatTimeAgoEs(parsePlanillaDateTime(row?.hora_llegada || row?.generado_en || row?.hora_despacho)),
+      formatTimeAgoEs(getLlegadaReferenceDate(row)),
       formatPlanillaCell(row?.base),
       formatPlanillaCell(row?.interno),
       getItinerarioLlegadaText(row),
@@ -2299,16 +3282,64 @@ function getRowsFilteredBySearchTerm(rowsInput, searchTerm){
   });
 }
 
+function getRowsFilteredByBase(rowsInput, baseFilterValue){
+  const rows = Array.isArray(rowsInput) ? rowsInput : [];
+  const selected = String(baseFilterValue || "").trim().toLowerCase();
+  if (!selected) return rows;
+  return rows.filter(row => {
+    const rawBase = formatPlanillaCell(row?.base).trim();
+    if (!rawBase) return false;
+    const canonical = getBaseCanonical(rawBase);
+    const canonicalText = canonical ? String(canonical).toLowerCase() : "";
+    const formatted = canonical ? formatBaseLabel(canonical).toLowerCase() : rawBase.toLowerCase();
+    const rawLower = rawBase.toLowerCase();
+    return rawLower === selected
+      || canonicalText === selected
+      || formatted === selected;
+  });
+}
+
+function syncLlegadasBaseFilterOptions(selectEl, rowsInput){
+  if (!selectEl) return;
+  const previous = String(selectEl.value || "");
+  const rows = Array.isArray(rowsInput) ? rowsInput : [];
+  const options = [];
+  const seen = new Set();
+  rows.forEach(row => {
+    const raw = formatPlanillaCell(row?.base).trim();
+    if (!raw) return;
+    const canonical = getBaseCanonical(raw);
+    const value = canonical ? String(canonical) : raw.toLowerCase();
+    if (!value || seen.has(value)) return;
+    seen.add(value);
+    options.push({
+      value,
+      label: canonical ? formatBaseLabel(canonical) : raw
+    });
+  });
+  options.sort((a, b) => a.label.localeCompare(b.label, "es", { numeric: true }));
+  selectEl.innerHTML = `<option value="">Todas las bases</option>${
+    options.map(opt => `<option value="${escapeHtml(opt.value)}">${escapeHtml(opt.label)}</option>`).join("")
+  }`;
+  if (previous && options.some(opt => String(opt.value) === previous)) {
+    selectEl.value = previous;
+  } else {
+    selectEl.value = "";
+  }
+}
+
 function getLlegadasRowsForView(tipoCode, options = {}){
   const searchTerm = String(options.searchTerm || "");
   const fromIso = String(options.fromIso || "").trim();
   const toIso = String(options.toIso || "").trim();
   const estadoMode = String(options.estadoMode || "");
+  const baseFilterValue = String(options.baseFilterValue || "");
   const hasExplicitFilters = !!searchTerm.trim() || !!fromIso || !!toIso || !!estadoMode;
   const rows = getLlegadasRowsByTipo(tipoCode, { preferToday: !hasExplicitFilters });
   const byEstado = getRowsFilteredByEstado(rows, estadoMode);
   const byDate = getRowsFilteredByUploadDate(byEstado, fromIso, toIso);
-  return getRowsFilteredBySearchTerm(byDate, searchTerm);
+  const byBase = getRowsFilteredByBase(byDate, baseFilterValue);
+  return getRowsFilteredBySearchTerm(byBase, searchTerm);
 }
 
 function exportPlanillaRowsToExcel(rowsInput, mode, filePrefix){
@@ -2333,8 +3364,8 @@ function exportPlanillaRowsToExcel(rowsInput, mode, filePrefix){
     };
     if (mode === "despachos") {
       return {
-        "Hora despacho": formatPlanillaDateTime(row?.hora_despacho),
-        "Itinerario despacho": formatPlanillaCell(row?.itinerario_despacho),
+        "Hora despacho": getDespachoDateTimeText(row),
+        "Itinerario despacho": getItinerarioDespachoText(row),
         ...base
       };
     }
@@ -2380,12 +3411,7 @@ function getHourBucketKey(value){
 }
 
 function getLlegadaRowPriorityTime(row){
-  return parsePlanillaDateTime(
-    row?.hora_despacho
-    || row?.generado_en
-    || row?.created_at
-    || row?.hora_llegada
-  );
+  return getLlegadaReferenceDate(row) || parsePlanillaDateTime(row?.hora_despacho);
 }
 
 function hasItinerarioDespacho(row){
@@ -2414,29 +3440,42 @@ function shouldPreferLlegadaRow(candidate, current){
 
 function dedupeLlegadasByHour(rowsInput){
   const rows = Array.isArray(rowsInput) ? rowsInput : [];
-  const keyToIndex = new Map();
+  const keyToLastIndex = new Map();
   const out = [];
   rows.forEach(row => {
-    const hourKey = getHourBucketKey(row?.hora_llegada || row?.generado_en || row?.hora_despacho);
     const tipo = formatPlanillaCell(row?.tipo_llegada);
-    const interno = formatPlanillaCell(row?.interno);
-    const base = formatPlanillaCell(row?.base);
+    const interno = formatPlanillaCell(row?.interno).trim();
+    const base = formatPlanillaCell(row?.base).trim();
+    const mid = formatPlanillaCell(row?.mid).trim();
+    const vehicleKey = interno || mid;
     const itin = formatPlanillaCell(row?.itinerario_llegada);
-    const dedupeKey = `${hourKey}|${tipo}|${base}|${interno}|${itin}`;
-    if (!hourKey) {
+    const rowDate = getLlegadaReferenceDate(row);
+    const dedupeKey = `${tipo}|${base}|${vehicleKey}|${itin}`;
+    if (!rowDate || !vehicleKey || !dedupeKey.trim()) {
       out.push(row);
       return;
     }
-    if (!keyToIndex.has(dedupeKey)) {
-      keyToIndex.set(dedupeKey, out.length);
+    if (!keyToLastIndex.has(dedupeKey)) {
+      keyToLastIndex.set(dedupeKey, out.length);
       out.push(row);
       return;
     }
-    const idx = keyToIndex.get(dedupeKey);
+    const idx = keyToLastIndex.get(dedupeKey);
     const current = out[idx];
-    if (shouldPreferLlegadaRow(row, current)) {
-      out[idx] = row;
+    const currentDate = parsePlanillaDateTime(current?.hora_llegada || current?.generado_en || current?.hora_despacho);
+    const diffMinutes = (!currentDate)
+      ? Number.POSITIVE_INFINITY
+      : Math.abs(rowDate.getTime() - currentDate.getTime()) / 60000;
+
+    // Solo unificar registros cercanos (<= 30 min). Si pasa esa ventana, se considera otra llegada.
+    if (diffMinutes <= ARRIVAL_DEDUPE_WINDOW_MINUTES) {
+      if (shouldPreferLlegadaRow(row, current)) {
+        out[idx] = row;
+      }
+      return;
     }
+    keyToLastIndex.set(dedupeKey, out.length);
+    out.push(row);
   });
   return out;
 }
@@ -2445,20 +3484,23 @@ function getLlegadasRowsByTipo(tipoCode, options = {}){
   const preferToday = options.preferToday !== false;
   const allRows = Array.isArray(planillaAfiliadosRows) ? planillaAfiliadosRows : [];
   const rowsFiltered = allRows.filter(r => String(r?.tipo_llegada ?? "").trim() === String(tipoCode));
+  const eligibleRows = filterOutOfListRows(rowsFiltered);
   let source = rowsFiltered;
   if (preferToday) {
     const now = new Date();
-    const todayRows = rowsFiltered.filter(r => {
-      const date = parsePlanillaDateTime(r?.hora_llegada || r?.generado_en || r?.hora_despacho);
+    const todayRows = eligibleRows.filter(r => {
+      const date = getLlegadaReferenceDate(r);
       return !!date && isSameLocalDate(date, now);
     });
-    source = todayRows.length > 0 ? todayRows : rowsFiltered;
+    source = todayRows.length > 0 ? todayRows : eligibleRows;
+  } else {
+    source = eligibleRows;
   }
   const sorted = source
     .slice()
     .sort((a, b) => {
-      const da = parsePlanillaDateTime(a?.hora_llegada || a?.generado_en || a?.hora_despacho);
-      const db = parsePlanillaDateTime(b?.hora_llegada || b?.generado_en || b?.hora_despacho);
+      const da = getLlegadaReferenceDate(a);
+      const db = getLlegadaReferenceDate(b);
       if (!da && !db) return 0;
       if (!da) return 1;
       if (!db) return -1;
@@ -2467,28 +3509,1032 @@ function getLlegadasRowsByTipo(tipoCode, options = {}){
   return dedupeLlegadasByHour(sorted);
 }
 
+function getLlegadasRowsByItinerarioLlegada(itineraryText, options = {}){
+  const preferToday = options.preferToday !== false;
+  const itineraryKey = normalizeItineraryKey(itineraryText);
+  const allRows = Array.isArray(planillaAfiliadosRows) ? planillaAfiliadosRows : [];
+  const rowsFiltered = allRows.filter(row => normalizeItineraryKey(getItinerarioLlegadaText(row)) === itineraryKey);
+  const eligibleRows = filterOutOfListRows(rowsFiltered);
+  let source = rowsFiltered;
+  if (preferToday) {
+    const now = new Date();
+    const todayRows = eligibleRows.filter(r => {
+      const date = getLlegadaReferenceDate(r);
+      return !!date && isSameLocalDate(date, now);
+    });
+    source = todayRows.length > 0 ? todayRows : eligibleRows;
+  } else {
+    source = eligibleRows;
+  }
+  const sorted = source
+    .slice()
+    .sort((a, b) => {
+      const da = getLlegadaReferenceDate(a);
+      const db = getLlegadaReferenceDate(b);
+      if (!da && !db) return 0;
+      if (!da) return 1;
+      if (!db) return -1;
+      return db.getTime() - da.getTime();
+    });
+  return dedupeLlegadasByHour(sorted);
+}
+
+function getTerminalNorteRowsForView(options = {}){
+  const searchTerm = String(options.searchTerm || "");
+  const fromIso = String(options.fromIso || "").trim();
+  const toIso = String(options.toIso || "").trim();
+  const estadoMode = String(options.estadoMode || "");
+  const baseFilterValue = String(options.baseFilterValue || "");
+  const hasExplicitFilters = !!searchTerm.trim() || !!fromIso || !!toIso || !!estadoMode;
+  const rows = getLlegadasRowsByItinerarioLlegada(TERMINAL_NORTE_ITINERARY, { preferToday: !hasExplicitFilters });
+  const byEstado = getRowsFilteredByEstado(rows, estadoMode);
+  const byDate = getRowsFilteredByUploadDate(byEstado, fromIso, toIso);
+  const byBase = getRowsFilteredByBase(byDate, baseFilterValue);
+  return getRowsFilteredBySearchTerm(byBase, searchTerm);
+}
+
+function getLlegadaReferenceDate(row){
+  return parsePlanillaDateTime(row?.hora_llegada || row?.generado_en || row?.created_at);
+}
+
+function buildArrivalTimelineByInterno(){
+  const timeline = new Map();
+  const allRows = Array.isArray(planillaAfiliadosRows) ? planillaAfiliadosRows : [];
+  allRows.forEach(row => {
+    const tipo = String(row?.tipo_llegada ?? "").trim();
+    if (!ARRIVAL_POINT_TYPES.has(tipo)) return;
+    const interno = formatPlanillaCell(row?.interno).trim();
+    if (!interno) return;
+    const date = getLlegadaReferenceDate(row);
+    if (!date) return;
+    if (!timeline.has(interno)) timeline.set(interno, []);
+    timeline.get(interno).push({ tipo, timeMs: date.getTime() });
+  });
+  timeline.forEach(list => list.sort((a, b) => b.timeMs - a.timeMs));
+  return timeline;
+}
+
+function splitRowsByNoDespachoRule(rowsInput){
+  const rows = Array.isArray(rowsInput) ? rowsInput : [];
+  if (!rows.length) return { activeRows: [], noDespachoRows: [] };
+  const nowMs = Date.now();
+  const timelineByInterno = buildArrivalTimelineByInterno();
+  const activeRows = [];
+  const noDespachoRows = [];
+
+  rows.forEach(row => {
+    if (hasValidDespacho(row)) {
+      activeRows.push(row);
+      return;
+    }
+    const date = getLlegadaReferenceDate(row);
+    const rowTimeMs = date ? date.getTime() : 0;
+    const elapsedMin = date ? Math.max(0, Math.floor((nowMs - rowTimeMs) / 60000)) : 0;
+    const isOverThreshold = !!date && elapsedMin >= NO_DESPACHO_THRESHOLD_MINUTES;
+    const tipo = String(row?.tipo_llegada ?? "").trim();
+    const interno = formatPlanillaCell(row?.interno).trim();
+    const timeline = timelineByInterno.get(interno) || [];
+    const hasArrivalInAnotherPoint = timeline.some(item => item.timeMs > rowTimeMs && item.tipo !== tipo);
+    const shouldMove = isOverThreshold || hasArrivalInAnotherPoint;
+
+    if (!shouldMove) {
+      activeRows.push(row);
+      return;
+    }
+    const reason = hasArrivalInAnotherPoint
+      ? "llegada posterior en otro punto"
+      : "en espera por mas de 3 h 30 min";
+    noDespachoRows.push({ ...row, __noDespachoReason: reason });
+  });
+
+  return { activeRows, noDespachoRows };
+}
+
+function resolveDispatchItineraryValue(row){
+  const directId = String(row?.itinerary ?? row?.itinerary_id ?? row?.itinerario_id ?? "").trim();
+  if (directId && SONAR_ITINERARIES.some(item => String(item.id) === directId)) return directId;
+  const byNameCandidates = [
+    row?.itinerario_llegada,
+    row?.itinerario_despacho
+  ];
+  for (const rawName of byNameCandidates) {
+    const key = normalizeItineraryKey(rawName);
+    if (!key) continue;
+    const found = SONAR_ITINERARIES.find(item => normalizeItineraryKey(item.nombre) === key);
+    if (found?.id) return String(found.id);
+  }
+  const candidates = [
+    row?.tipo_llegada
+  ];
+  for (const item of candidates) {
+    const val = String(item ?? "").trim();
+    if (val && SONAR_ITINERARIES.some(it => String(it.id) === val)) return val;
+  }
+  return "";
+}
+
+function getDispatchItineraryOptionsForRow(row){
+  const pointKey = getNoDespachoPointKey(row);
+  if (pointKey === "aeropuerto") {
+    return SONAR_ITINERARIES.filter(item => String(item?.grupo || "").trim().toUpperCase() === "AEROPUERTO");
+  }
+  return SONAR_ITINERARIES;
+}
+
+function getSonarItineraryById(itineraryId){
+  const id = String(itineraryId || "").trim();
+  if (!id) return null;
+  return SONAR_ITINERARIES.find(item => String(item.id) === id) || null;
+}
+
+function getRowDispatchRegId(row){
+  const source = row && typeof row === "object" ? row : {};
+  const candidates = [
+    source.reg_id,
+    source.regid,
+    source.regId
+  ];
+  for (const item of candidates) {
+    const value = String(item || "").trim();
+    if (value) return value;
+  }
+  return "";
+}
+
+function setRowDispatchRegId(row, regId){
+  if (!row || typeof row !== "object") return;
+  const value = String(regId || "").trim();
+  if (!value) return;
+  row.reg_id = value;
+  row.regid = value;
+  row.regId = value;
+}
+
+function extractDispatchRegId(result){
+  const candidates = [
+    result?.data?.regId,
+    result?.regId,
+    result?.data?.regid,
+    result?.regid
+  ];
+  for (const item of candidates) {
+    const value = String(item || "").trim();
+    if (value) return value;
+  }
+  return "";
+}
+
+function normalizeDriverName(value){
+  return String(value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toUpperCase()
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function findDriverIdByName(driverName, base){
+  const raw = String(driverName || "").trim();
+  if (!raw) return "";
+  const enabledRows = (driversCatalogRows || []).filter(row => String(row?.status || "").trim().toUpperCase() === "ENABLED");
+  const directById = enabledRows.find(row => String(row?.dr_id || "").trim() === raw);
+  if (directById?.dr_id) return String(directById.dr_id).trim();
+  const nameKey = normalizeDriverName(raw);
+  const baseCanonical = getBaseCanonical(base || "");
+  const exactInBase = enabledRows.find(row => normalizeDriverName(row?.nombre) === nameKey && (!baseCanonical || getCsvDriverBase(row) === baseCanonical));
+  if (exactInBase?.dr_id) return String(exactInBase.dr_id).trim();
+  const exactAny = enabledRows.find(row => normalizeDriverName(row?.nombre) === nameKey);
+  if (exactAny?.dr_id) return String(exactAny.dr_id).trim();
+  return "";
+}
+
+function canDispatchRow(row){
+  return !hasValidDespacho(row)
+    && !!String(row?.mid ?? "").trim();
+}
+
+function canCancelDispatchRow(row){
+  return hasValidDespacho(row)
+    && !!String(row?.mid ?? "").trim()
+    && !!getRowDispatchRegId(row);
+}
+
+function canRemoveRowFromArrivalList(row){
+  return !isRowOutOfList(row);
+}
+
+function getDispatchButtonHtml(row){
+  const rowUiId = ensureRowUiId(row);
+  const editBtn = `<button type="button" class="btn btn-ghost btn-edit-planilla" data-row-ui="${escapeHtml(rowUiId)}" title="Editar pasajeros y observaciones">Editar</button>`;
+  const loadingRemove = removingFromListRowUiIds.has(rowUiId);
+  const removeDisabled = loadingRemove || !canRemoveRowFromArrivalList(row);
+  const removeLabel = loadingRemove ? "Sacando..." : "Sacar";
+  const removeTitle = removeDisabled && !loadingRemove
+    ? "Este vehiculo ya fue retirado de la lista"
+    : "Sacar vehiculo de la lista por novedad";
+  const removeBtn = `<button type="button" class="btn btn-danger btn-remove-list" data-row-ui="${escapeHtml(rowUiId)}" ${removeDisabled ? "disabled" : ""} title="${escapeHtml(removeTitle)}">${escapeHtml(removeLabel)}</button>`;
+  if (hasValidDespacho(row)) {
+    const loadingCancel = cancelingRowUiIds.has(rowUiId);
+    const canCancel = canCancelDispatchRow(row);
+    const label = loadingCancel ? "Cancelando..." : "Cancelar";
+    const title = canCancel
+      ? "Cancelar este despacho en Sonar"
+      : "No se puede cancelar: falta regId guardado";
+    const cancelBtn = `<button type="button" class="btn btn-danger btn-cancel-sonar" data-row-ui="${escapeHtml(rowUiId)}" ${loadingCancel || !canCancel ? "disabled" : ""} title="${escapeHtml(title)}">${escapeHtml(label)}</button>`;
+    return `<div class="row" style="gap:6px;flex-wrap:wrap">${cancelBtn}${removeBtn}${editBtn}</div>`;
+  }
+  const loading = dispatchingRowUiIds.has(rowUiId);
+  const disabled = loading || !canDispatchRow(row);
+  const label = loading ? "Despachando..." : "Despachar";
+  const title = disabled && !loading
+    ? "Requiere MID."
+    : "Enviar despacho a Sonar";
+  const dispatchBtn = `<button type="button" class="btn btn-ghost btn-dispatch-sonar" data-row-ui="${escapeHtml(rowUiId)}" ${disabled ? "disabled" : ""} title="${escapeHtml(title)}">${escapeHtml(label)}</button>`;
+  return `<div class="row" style="gap:6px;flex-wrap:wrap">${dispatchBtn}${removeBtn}${editBtn}</div>`;
+}
+
+async function sendOutOfListWebhook(entry){
+  if (!OUT_OF_LIST_WEBHOOK_URL) return { success: false, skipped: true, message: "Webhook no configurado" };
+  const payload = {
+    event: "vehiculo_fuera_lista",
+    sent_at: new Date().toISOString(),
+    app: "panel_llegadas_vehiculos",
+    data: entry
+  };
+  const response = await fetch(OUT_OF_LIST_WEBHOOK_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload)
+  });
+  const body = await response.text();
+  if (!response.ok) {
+    throw new Error(`Webhook HTTP ${response.status}${body ? `: ${body.slice(0, 180)}` : ""}`);
+  }
+  return { success: true, status: response.status };
+}
+
+function getRowByUiId(rowUiId){
+  const target = String(rowUiId || "").trim();
+  if (!target) return null;
+  const allRows = Array.isArray(planillaAfiliadosRows) ? planillaAfiliadosRows : [];
+  return allRows.find(row => ensureRowUiId(row) === target) || null;
+}
+
+async function persistDispatchOnPlanillaRow(row, payload){
+  const rowId = row?.id;
+  if (!rowId) return;
+  const patch = {
+    estado: "Despachado",
+    observaciones: payload.observaciones ?? row?.observaciones ?? "",
+    driver_id: payload.drvId || row?.driver_id || null
+  };
+  const { error } = await planillaSupabaseClient
+    .from(currentPlanillaTableName)
+    .update(patch)
+    .eq("id", rowId);
+  if (error) throw error;
+  const regId = String(payload?.dispatchRegId || payload?.regId || "").trim();
+  if (regId) {
+    const persistedColumn = await persistPlanillaRegIdByKnownColumns(rowId, regId);
+    if (!persistedColumn) {
+      throw new Error("No existe columna reg_id/regid/regId para guardar regId.");
+    }
+  }
+}
+
+async function persistPlanillaRegIdByKnownColumns(rowId, regId){
+  const id = rowId;
+  const value = String(regId || "").trim();
+  if (!id || !value) return "";
+  for (const columnName of PLANILLA_OPTIONAL_REG_ID_COLUMNS) {
+    const patch = { [columnName]: value };
+    const { error } = await planillaSupabaseClient
+      .from(currentPlanillaTableName)
+      .update(patch)
+      .eq("id", id);
+    if (!error) return columnName;
+  }
+  return "";
+}
+
+async function persistCancelOnPlanillaRow(row, payload){
+  const rowId = row?.id;
+  if (!rowId) return;
+  const patch = {
+    hora_despacho: null,
+    estado: "En espera",
+    itinerario_despacho: null
+  };
+  if (payload?.driverId) patch.driver_id = payload.driverId;
+  const { error } = await planillaSupabaseClient
+    .from(currentPlanillaTableName)
+    .update(patch)
+    .eq("id", rowId);
+  if (error) throw error;
+}
+
+async function persistPassengersAndObservacionesOnPlanillaRow(row, payload){
+  const rowId = row?.id;
+  if (!rowId) return;
+  const patch = {
+    pasajeros: payload?.pasajeros ?? row?.pasajeros ?? null,
+    observaciones: payload?.observaciones ?? row?.observaciones ?? ""
+  };
+  const { error } = await planillaSupabaseClient
+    .from(currentPlanillaTableName)
+    .update(patch)
+    .eq("id", rowId);
+  if (error) throw error;
+}
+
+async function sendDispatchToSonar(payload){
+  const response = await fetch(SONAR_DISPATCH_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      apikey: SONAR_DISPATCH_KEY,
+      Authorization: `Bearer ${SONAR_DISPATCH_KEY}`
+    },
+    body: JSON.stringify(payload)
+  });
+  const raw = await response.text();
+  let parsed = null;
+  try {
+    parsed = raw ? JSON.parse(raw) : null;
+  } catch (e) {
+    parsed = null;
+  }
+  if (!response.ok) {
+    throw new Error(parsed?.message || `HTTP ${response.status}`);
+  }
+  if (parsed && parsed.success === false) {
+    throw new Error(String(parsed?.message || "sonar-dispatch rechazo la solicitud"));
+  }
+  return parsed ?? { success: true, raw };
+}
+
+async function sendCancelDispatchToSonar(payload){
+  const response = await fetch(SONAR_CANCEL_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      apikey: SONAR_CANCEL_KEY,
+      Authorization: `Bearer ${SONAR_CANCEL_KEY}`
+    },
+    body: JSON.stringify(payload)
+  });
+  const raw = await response.text();
+  let parsed = null;
+  try {
+    parsed = raw ? JSON.parse(raw) : null;
+  } catch (e) {
+    parsed = null;
+  }
+  if (!response.ok) {
+    throw new Error(parsed?.message || `HTTP ${response.status}`);
+  }
+  if (parsed && parsed.success === false) {
+    throw new Error(String(parsed?.message || "sonar-cancel rechazo la solicitud"));
+  }
+  return parsed ?? { success: true, raw };
+}
+
+async function handleDispatchRow(rowUiId){
+  const row = getRowByUiId(rowUiId);
+  if (!row) {
+    showToast("No se encontro la fila para despachar.", "warn");
+    return;
+  }
+  if (hasValidDespacho(row)) {
+    showToast("Esta fila ya tiene despacho.", "warn");
+    return;
+  }
+  const payload = {
+    mId: String(row?.mid ?? "").trim(),
+    drvId: String(row?.driver_id ?? "").trim() || findDriverIdByName(row?.conductor, row?.base),
+    observaciones: String(row?.observaciones ?? "")
+  };
+  if (!payload.mId) {
+    showToast("Falta MID para despachar.", "warn");
+    return;
+  }
+  const suggestedItineraryId = resolveDispatchItineraryValue(row);
+  const itineraryOptions = getDispatchItineraryOptionsForRow(row);
+  const modalResult = await openDispatchConfirmModal({
+    interno: formatPlanillaCell(row?.interno),
+    base: formatPlanillaCell(row?.base),
+    mid: payload.mId,
+    driverId: payload.drvId,
+    itineraryId: suggestedItineraryId,
+    itineraryOptions,
+    observaciones: payload.observaciones || "-"
+  });
+  if (!modalResult?.confirmed) return;
+  payload.drvId = String(modalResult?.driverId || payload.drvId || "").trim();
+  payload.itinerary = String(modalResult?.itineraryId || suggestedItineraryId || "").trim();
+  if (!payload.drvId) {
+    showToast("Selecciona un Driver ID en el modal para despachar.", "warn");
+    return;
+  }
+  if (!payload.itinerary) {
+    showToast("Selecciona un itinerario en el modal para despachar.", "warn");
+    return;
+  }
+  payload.itineraryLabel = String(getSonarItineraryById(payload.itinerary)?.nombre || payload.itinerary);
+  const uiId = ensureRowUiId(row);
+  let shouldReloadFromDb = false;
+  dispatchingRowUiIds.add(uiId);
+  renderLlegadasAeropuerto();
+  renderLlegadasTerminalNorte();
+  renderLlegadasSanDiego();
+  renderLlegadasNutibara();
+  renderNoDespachoTab();
+  try {
+    const result = await sendDispatchToSonar(payload);
+    const dispatchRegId = extractDispatchRegId(result);
+    if (dispatchRegId) {
+      payload.dispatchRegId = dispatchRegId;
+      setRowDispatchRegId(row, dispatchRegId);
+    }
+    row.driver_id = payload.drvId;
+    row.estado = "Despachado";
+    invalidatePlanillaDispatchResolutionCache();
+    try {
+      await persistDispatchOnPlanillaRow(row, payload);
+      shouldReloadFromDb = true;
+    } catch (persistErr) {
+      console.error("No se pudo persistir despacho en planilla:", persistErr);
+      showToast("Despacho enviado, pero no se guardo en tabla planilla.", "warn");
+    }
+    const regIdTxt = dispatchRegId;
+    showToast(`Despacho enviado${regIdTxt ? ` (regId ${regIdTxt})` : ""}.`, "ok");
+    notifyDispatchServerSyncDelay();
+  } catch (error) {
+    showToast(`Error al despachar: ${error?.message || "fallo en sonar-dispatch"}`, "err");
+  } finally {
+    dispatchingRowUiIds.delete(uiId);
+    if (shouldReloadFromDb) {
+      await loadPlanillaAfiliadosFromSupabase();
+      return;
+    }
+    renderLlegadasAeropuerto();
+    renderLlegadasTerminalNorte();
+    renderLlegadasSanDiego();
+    renderLlegadasNutibara();
+    renderNoDespachoTab();
+  }
+}
+
+function findPlanillaRowForManualDispatch(payload){
+  const rowsList = Array.isArray(planillaAfiliadosRows) ? planillaAfiliadosRows : [];
+  const mid = String(payload?.mId || "").trim();
+  const interno = String(payload?.interno || "").trim();
+  const matches = rowsList.filter(row => {
+    const rowMid = String(row?.mid || "").trim();
+    const rowInterno = String(row?.interno || "").trim();
+    if (mid && rowMid && rowMid === mid) return true;
+    if (interno && rowInterno && rowInterno === interno) return true;
+    return false;
+  });
+  if (!matches.length) return null;
+  matches.sort((a, b) => {
+    const da = getLlegadaReferenceDate(a);
+    const db = getLlegadaReferenceDate(b);
+    if (!da && !db) return 0;
+    if (!da) return 1;
+    if (!db) return -1;
+    return db.getTime() - da.getTime();
+  });
+  return matches[0];
+}
+
+async function handleManualDispatch(){
+  const modalResult = await openManualDispatchModal();
+  if (!modalResult?.confirmed) return;
+  const payload = {
+    mId: String(modalResult?.mId || "").trim(),
+    drvId: String(modalResult?.drvId || "").trim(),
+    itinerary: String(modalResult?.itinerary || "").trim(),
+    observaciones: String(modalResult?.observaciones || "").trim(),
+    interno: String(modalResult?.interno || "").trim(),
+    base: String(modalResult?.base || "").trim(),
+    conductorName: String(modalResult?.conductorName || "").trim()
+  };
+  if (!payload.interno || !payload.base || !payload.mId || !payload.drvId || !payload.itinerary) {
+    showToast("Despacho manual: faltan Interno, Base, MID, Driver ID o Itinerario.", "warn");
+    return;
+  }
+  payload.itineraryLabel = String(getSonarItineraryById(payload.itinerary)?.nombre || payload.itinerary);
+  let shouldReloadFromDb = false;
+  try {
+    const result = await sendDispatchToSonar(payload);
+    const row = findPlanillaRowForManualDispatch(payload);
+    const dispatchRegId = extractDispatchRegId(result);
+    if (dispatchRegId) payload.dispatchRegId = dispatchRegId;
+    if (row) {
+      if (dispatchRegId) setRowDispatchRegId(row, dispatchRegId);
+      row.driver_id = payload.drvId;
+      row.estado = "Despachado";
+      invalidatePlanillaDispatchResolutionCache();
+      try {
+        await persistDispatchOnPlanillaRow(row, payload);
+        shouldReloadFromDb = true;
+      } catch (persistErr) {
+        console.error("No se pudo persistir despacho manual en planilla:", persistErr);
+        showToast("Despacho manual enviado, pero no se guardo en planilla.", "warn");
+      }
+    }
+    const regIdTxt = dispatchRegId;
+    showToast(`Despacho manual enviado${regIdTxt ? ` (regId ${regIdTxt})` : ""}.`, "ok");
+    notifyDispatchServerSyncDelay();
+  } catch (error) {
+    showToast(`Error en despacho manual: ${error?.message || "fallo en sonar-dispatch"}`, "err");
+  } finally {
+    if (shouldReloadFromDb) {
+      await loadPlanillaAfiliadosFromSupabase();
+      return;
+    }
+    renderLlegadasAeropuerto();
+    renderLlegadasTerminalNorte();
+    renderLlegadasSanDiego();
+    renderLlegadasNutibara();
+    renderNoDespachoTab();
+  }
+}
+
+async function handleCancelDispatchRow(rowUiId){
+  const row = getRowByUiId(rowUiId);
+  if (!row) {
+    showToast("No se encontro la fila para cancelar.", "warn");
+    return;
+  }
+  if (!hasValidDespacho(row)) {
+    showToast("La fila no tiene despacho activo para cancelar.", "warn");
+    return;
+  }
+  const regId = getRowDispatchRegId(row);
+  const mId = String(row?.mid || "").trim();
+  if (!mId || !regId) {
+    showToast("No se puede cancelar: falta MID o regId.", "warn");
+    return;
+  }
+  const modalResult = await openCancelDispatchModal({
+    interno: formatPlanillaCell(row?.interno),
+    base: formatPlanillaCell(row?.base),
+    mid: mId,
+    regId,
+    horaDespacho: getDespachoDateTimeText(row)
+  });
+  if (!modalResult?.confirmed) return;
+  const comments = String(modalResult?.comments || "").trim();
+  const confirmWord = String(modalResult?.confirmWord || "").trim().toUpperCase();
+  if (comments.length < 5) {
+    showToast("Escribe un motivo de minimo 5 caracteres para cancelar.", "warn");
+    return;
+  }
+  if (confirmWord !== "CANCELAR") {
+    showToast('Para evitar errores debes escribir "CANCELAR".', "warn");
+    return;
+  }
+  const uiId = ensureRowUiId(row);
+  cancelingRowUiIds.add(uiId);
+  renderLlegadasAeropuerto();
+  renderLlegadasTerminalNorte();
+  renderLlegadasSanDiego();
+  renderLlegadasNutibara();
+  renderNoDespachoTab();
+  try {
+    const payload = {
+      mId,
+      regId,
+      comments,
+      dispatchId: row?.id ?? null,
+      canceledBy: currentUserEmail || currentUserId || "desconocido",
+      canceledAt: new Date().toISOString(),
+      vehicle: {
+        interno: formatPlanillaCell(row?.interno),
+        base: formatPlanillaCell(row?.base)
+      },
+      dispatch: {
+        itinerary: formatPlanillaCell(row?.itinerario_despacho),
+        hora_despacho: formatPlanillaCell(row?.hora_despacho),
+        driver_id: formatPlanillaCell(row?.driver_id)
+      }
+    };
+    await sendCancelDispatchToSonar(payload);
+    row.hora_despacho = null;
+    row.itinerario_despacho = "";
+    row.estado = "En espera";
+    invalidatePlanillaDispatchResolutionCache();
+    try {
+      await persistCancelOnPlanillaRow(row, { comments, driverId: row?.driver_id });
+    } catch (persistErr) {
+      console.error("No se pudo persistir cancelacion en planilla:", persistErr);
+      showToast("Cancelacion enviada, pero no se actualizo planilla.", "warn");
+    }
+    showToast("Despacho cancelado en Sonar.", "ok");
+  } catch (error) {
+    showToast(`Error al cancelar: ${error?.message || "fallo en sonar-cancel"}`, "err");
+  } finally {
+    cancelingRowUiIds.delete(uiId);
+    renderLlegadasAeropuerto();
+    renderLlegadasTerminalNorte();
+    renderLlegadasSanDiego();
+    renderLlegadasNutibara();
+    renderNoDespachoTab();
+  }
+}
+
+function renderFueraListaTab(){
+  if (!fueraListaBody) return;
+  const search = String(fueraListaSearch?.value || "").trim().toLowerCase();
+  const list = Array.isArray(outOfListVehicles) ? outOfListVehicles : [];
+  const visible = search
+    ? list.filter(item => {
+      const tokens = [
+        item?.interno,
+        item?.mid,
+        item?.base,
+        item?.punto,
+        item?.observacion,
+        item?.retirado_por,
+        item?.hora_llegada
+      ];
+      return tokens.join(" ").toLowerCase().includes(search);
+    })
+    : list;
+  if (fueraListaCount) fueraListaCount.textContent = String(visible.length);
+  if (!visible.length) {
+    fueraListaBody.innerHTML = `<tr><td colspan="9" class="muted" style="text-align:center;padding:12px">Sin vehiculos retirados localmente.</td></tr>`;
+    return;
+  }
+  fueraListaBody.innerHTML = visible.map(item => {
+    const retiroAt = formatPlanillaDateTime(item?.retirado_en || item?.created_at || "");
+    const webhookTxt = item?.webhook_ok
+      ? "Enviado"
+      : (item?.webhook_error ? "Error" : "Pendiente");
+    return `<tr>
+      <td>${escapeHtml(retiroAt)}</td>
+      <td>${escapeHtml(formatPlanillaCell(item?.punto || "-"))}</td>
+      <td>${escapeHtml(formatPlanillaCell(item?.base || "-"))}</td>
+      <td><strong style="color:#065f46">${escapeHtml(formatPlanillaCell(item?.interno || "-"))}</strong></td>
+      <td>${escapeHtml(formatPlanillaCell(item?.mid || "-"))}</td>
+      <td>${escapeHtml(formatPlanillaCell(item?.hora_llegada || "-"))}</td>
+      <td>${escapeHtml(formatPlanillaCell(item?.observacion || "-"))}</td>
+      <td>${escapeHtml(formatPlanillaCell(item?.retirado_por || "-"))}</td>
+      <td>${escapeHtml(webhookTxt)}</td>
+    </tr>`;
+  }).join("");
+}
+
+async function handleRemoveFromListRow(rowUiId){
+  const row = getRowByUiId(rowUiId);
+  if (!row) {
+    showToast("No se encontro la fila para retirar.", "warn");
+    return;
+  }
+  if (isRowOutOfList(row)) {
+    showToast("Ese vehiculo ya fue retirado de la lista.", "warn");
+    return;
+  }
+  const punto = getNoDespachoPointLabel(row);
+  const modalResult = await openRemoveFromListModal({
+    interno: formatPlanillaCell(row?.interno),
+    base: formatPlanillaCell(row?.base),
+    mid: formatPlanillaCell(row?.mid),
+    punto
+  });
+  if (!modalResult?.confirmed) return;
+  const observacion = String(modalResult?.observacion || "").trim();
+  const confirmWord = String(modalResult?.confirmWord || "").trim().toUpperCase();
+  if (observacion.length < 8) {
+    showToast("La observacion debe tener minimo 8 caracteres.", "warn");
+    return;
+  }
+  if (confirmWord !== "RETIRAR") {
+    showToast('Para confirmar debes escribir "RETIRAR".', "warn");
+    return;
+  }
+  const uiId = ensureRowUiId(row);
+  removingFromListRowUiIds.add(uiId);
+  renderLlegadasAeropuerto();
+  renderLlegadasTerminalNorte();
+  renderLlegadasSanDiego();
+  renderLlegadasNutibara();
+  renderNoDespachoTab();
+  try {
+    const entry = {
+      id: `out-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      row_id: row?.id ?? null,
+      row_key: buildOutOfListRowKey(row),
+      interno: formatPlanillaCell(row?.interno),
+      mid: formatPlanillaCell(row?.mid),
+      base: formatPlanillaCell(row?.base),
+      punto,
+      hora_llegada: formatPlanillaDateTime(row?.hora_llegada || row?.generado_en || row?.created_at),
+      itinerario_llegada: formatPlanillaCell(row?.itinerario_llegada),
+      observacion,
+      retirado_por: currentUserEmail || currentUserId || "desconocido",
+      retirado_en: new Date().toISOString(),
+      webhook_ok: false,
+      webhook_error: ""
+    };
+    const added = addOutOfListVehicleEntry(entry);
+    if (!added) {
+      showToast("Ese vehiculo ya estaba retirado localmente.", "warn");
+      return;
+    }
+    try {
+      await sendOutOfListWebhook(entry);
+      updateOutOfListEntry(entry.id, { webhook_ok: true, webhook_error: "" });
+      if (fueraListaStatus) fueraListaStatus.textContent = `Webhook enviado: ${new Date().toLocaleString("es-CO")}`;
+    } catch (webErr) {
+      updateOutOfListEntry(entry.id, { webhook_ok: false, webhook_error: String(webErr?.message || "Error webhook") });
+      if (fueraListaStatus) fueraListaStatus.textContent = `Error webhook: ${String(webErr?.message || "sin detalle")}`;
+      showToast("Retirado localmente, pero fallo el webhook.", "warn");
+    }
+    showToast("Vehiculo retirado de la lista.", "ok");
+  } finally {
+    removingFromListRowUiIds.delete(uiId);
+    renderLlegadasAeropuerto();
+    renderLlegadasTerminalNorte();
+    renderLlegadasSanDiego();
+    renderLlegadasNutibara();
+    renderNoDespachoTab();
+    renderFueraListaTab();
+  }
+}
+
+async function handleEditPlanillaRow(rowUiId){
+  const row = getRowByUiId(rowUiId);
+  if (!row) {
+    showToast("No se encontro la fila para editar.", "warn");
+    return;
+  }
+  const modalResult = await openEditPlanillaModal({
+    interno: formatPlanillaCell(row?.interno),
+    base: formatPlanillaCell(row?.base),
+    mid: formatPlanillaCell(row?.mid),
+    pasajeros: formatPlanillaCell(row?.pasajeros),
+    observaciones: formatPlanillaCell(row?.observaciones)
+  });
+  if (!modalResult?.confirmed) return;
+  const pasajerosRaw = String(modalResult?.pasajeros || "").trim();
+  const observaciones = String(modalResult?.observaciones || "").trim();
+  if (pasajerosRaw && !/^\d+$/.test(pasajerosRaw)) {
+    showToast("Pasajeros debe ser un numero entero.", "warn");
+    return;
+  }
+  const pasajeros = pasajerosRaw === "" ? null : Number(pasajerosRaw);
+  if (pasajeros !== null && (!Number.isFinite(pasajeros) || pasajeros < 0)) {
+    showToast("Pasajeros no puede ser negativo.", "warn");
+    return;
+  }
+  try {
+    await persistPassengersAndObservacionesOnPlanillaRow(row, { pasajeros, observaciones });
+    row.pasajeros = pasajerosRaw === "" ? "" : String(pasajeros);
+    row.observaciones = observaciones;
+    showToast("Pasajeros y observaciones actualizados.", "ok");
+  } catch (error) {
+    showToast(`No se pudo actualizar en Supabase: ${error?.message || "sin detalle"}`, "err");
+    return;
+  } finally {
+    renderPlanillaAfiliados();
+    renderLlegadasAeropuerto();
+    renderLlegadasTerminalNorte();
+    renderLlegadasSanDiego();
+    renderLlegadasNutibara();
+    renderNoDespachoTab();
+    renderFueraListaTab();
+  }
+}
+
+function bindDispatchButtons(containerEl){
+  if (!containerEl) return;
+  containerEl.querySelectorAll(".btn-dispatch-sonar[data-row-ui]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const rowUiId = btn.getAttribute("data-row-ui") || "";
+      handleDispatchRow(rowUiId);
+    });
+  });
+  containerEl.querySelectorAll(".btn-cancel-sonar[data-row-ui]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const rowUiId = btn.getAttribute("data-row-ui") || "";
+      handleCancelDispatchRow(rowUiId);
+    });
+  });
+  containerEl.querySelectorAll(".btn-remove-list[data-row-ui]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const rowUiId = btn.getAttribute("data-row-ui") || "";
+      handleRemoveFromListRow(rowUiId);
+    });
+  });
+  containerEl.querySelectorAll(".btn-edit-planilla[data-row-ui]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const rowUiId = btn.getAttribute("data-row-ui") || "";
+      handleEditPlanillaRow(rowUiId);
+    });
+  });
+}
+
+function renderLlegadasRowsHtml(rowsInput, includeReason){
+  const rows = Array.isArray(rowsInput) ? rowsInput : [];
+  return rows.map(row => {
+    ensureRowUiId(row);
+    const date = getLlegadaReferenceDate(row);
+    const horaTxt = formatPlanillaDateTime(row?.hora_llegada || row?.generado_en || row?.hora_despacho);
+    const despachoTxt = getDespachoDateTimeText(row);
+    const operacionTxt = getOperacionEstadoText(row);
+    const haceTxt = formatTimeAgoEs(date);
+    const baseTxt = formatPlanillaCell(row?.base);
+    const internoTxt = formatPlanillaCell(row?.interno);
+    const usuarioTxt = formatPlanillaCell(row?.usuario);
+    const pasajerosTxt = formatPlanillaCell(row?.pasajeros);
+    const observacionesTxt = formatPlanillaCell(row?.observaciones);
+    const itinLlegadaHtml = getItinerarioLlegadaCellHtml(row);
+    const itinDespachoTxt = getItinerarioDespachoText(row);
+    const reasonTxt = includeReason ? formatPlanillaCell(row?.__noDespachoReason || "-") : "";
+    const dispatchBtn = getDispatchButtonHtml(row);
+    return `<tr>
+      <td>${escapeHtml(horaTxt)}</td>
+      <td>${escapeHtml(despachoTxt)}</td>
+      <td><strong style="color:${operacionTxt === "Despachado" ? "#065f46" : "#b45309"}">${escapeHtml(operacionTxt)}</strong></td>
+      <td><strong style="color:#1d4ed8">${escapeHtml(haceTxt)}</strong></td>
+      <td>${escapeHtml(baseTxt)}</td>
+      <td><strong style="color:#065f46">${escapeHtml(internoTxt)}</strong></td>
+      <td>${escapeHtml(usuarioTxt)}</td>
+      <td>${escapeHtml(pasajerosTxt)}</td>
+      <td>${escapeHtml(observacionesTxt)}</td>
+      <td>${itinLlegadaHtml}</td>
+      <td><strong>${escapeHtml(itinDespachoTxt)}</strong></td>
+      ${includeReason ? `<td>${escapeHtml(reasonTxt)}</td>` : ""}
+      <td>${dispatchBtn}</td>
+    </tr>`;
+  }).join("");
+}
+
+function getNoDespachoPointKey(row){
+  const tipo = String(row?.tipo_llegada ?? "").trim();
+  const itinKey = normalizeItineraryKey(getItinerarioLlegadaText(row));
+  if (tipo === "129" || itinKey === normalizeItineraryKey(TERMINAL_NORTE_ITINERARY)) return "terminalnorte";
+  if (tipo === "104") return "aeropuerto";
+  if (tipo === "101") return "sandiego";
+  if (tipo === "110") return "nutibara";
+  return "otro";
+}
+
+function getNoDespachoPointLabel(row){
+  const key = getNoDespachoPointKey(row);
+  if (key === "aeropuerto") return "Aeropuerto 2";
+  if (key === "terminalnorte") return "Terminalnorte 2";
+  if (key === "sandiego") return "San Diego 2";
+  if (key === "nutibara") return "Nutibara 2";
+  return "Otro";
+}
+
+function getAllOperationalArrivalRows(){
+  const allRows = Array.isArray(planillaAfiliadosRows) ? planillaAfiliadosRows : [];
+  const arrivals = allRows.filter(row => ARRIVAL_POINT_TYPES.has(String(row?.tipo_llegada ?? "").trim()));
+  const eligibleArrivals = filterOutOfListRows(arrivals);
+  const operational = getRowsFilteredByEsperaOperationalDay(eligibleArrivals);
+  const sorted = operational.slice().sort(comparePlanillaRowsByCurrentDateTime);
+  return dedupeLlegadasByHour(sorted);
+}
+
+function getNoDespachoRowsForView(options = {}){
+  const searchTerm = String(options.searchTerm || "").trim().toLowerCase();
+  const punto = String(options.punto || "").trim().toLowerCase();
+  const fromIso = String(options.fromIso || "").trim();
+  const toIso = String(options.toIso || "").trim();
+  const baseFilterValue = String(options.baseFilterValue || "");
+  const arrivals = getAllOperationalArrivalRows();
+  let rows = splitRowsByNoDespachoRule(arrivals).noDespachoRows;
+  if (punto) rows = rows.filter(row => getNoDespachoPointKey(row) === punto);
+  rows = getRowsFilteredByUploadDate(rows, fromIso, toIso);
+  rows = getRowsFilteredByBase(rows, baseFilterValue);
+  if (searchTerm) {
+    rows = rows.filter(row => {
+      const tokens = [
+        getNoDespachoPointLabel(row),
+        formatPlanillaDateTime(row?.hora_llegada || row?.generado_en || row?.hora_despacho),
+        getDespachoDateTimeText(row),
+        getOperacionEstadoText(row),
+        formatTimeAgoEs(getLlegadaReferenceDate(row)),
+        formatPlanillaCell(row?.base),
+        formatPlanillaCell(row?.interno),
+        formatPlanillaCell(row?.usuario),
+        formatPlanillaCell(row?.pasajeros),
+        formatPlanillaCell(row?.observaciones),
+        getItinerarioLlegadaText(row),
+        getItinerarioDespachoText(row),
+        formatPlanillaCell(row?.__noDespachoReason)
+      ];
+      return tokens.join(" ").toLowerCase().includes(searchTerm);
+    });
+  }
+  return rows.slice().sort(comparePlanillaRowsByCurrentDateTime);
+}
+
+function renderNoDespachoTabRows(rowsInput){
+  const rows = Array.isArray(rowsInput) ? rowsInput : [];
+  return rows.map(row => {
+    ensureRowUiId(row);
+    const pointTxt = getNoDespachoPointLabel(row);
+    const date = getLlegadaReferenceDate(row);
+    const horaTxt = formatPlanillaDateTime(row?.hora_llegada || row?.generado_en || row?.hora_despacho);
+    const despachoTxt = getDespachoDateTimeText(row);
+    const operacionTxt = getOperacionEstadoText(row);
+    const haceTxt = formatTimeAgoEs(date);
+    const baseTxt = formatPlanillaCell(row?.base);
+    const internoTxt = formatPlanillaCell(row?.interno);
+    const usuarioTxt = formatPlanillaCell(row?.usuario);
+    const pasajerosTxt = formatPlanillaCell(row?.pasajeros);
+    const observacionesTxt = formatPlanillaCell(row?.observaciones);
+    const itinLlegadaHtml = getItinerarioLlegadaCellHtml(row);
+    const itinDespachoTxt = getItinerarioDespachoText(row);
+    const reasonTxt = formatPlanillaCell(row?.__noDespachoReason || "-");
+    const dispatchBtn = getDispatchButtonHtml(row);
+    return `<tr>
+      <td>${escapeHtml(pointTxt)}</td>
+      <td>${escapeHtml(horaTxt)}</td>
+      <td>${escapeHtml(despachoTxt)}</td>
+      <td><strong style="color:${operacionTxt === "Despachado" ? "#065f46" : "#b45309"}">${escapeHtml(operacionTxt)}</strong></td>
+      <td><strong style="color:#1d4ed8">${escapeHtml(haceTxt)}</strong></td>
+      <td>${escapeHtml(baseTxt)}</td>
+      <td><strong style="color:#065f46">${escapeHtml(internoTxt)}</strong></td>
+      <td>${escapeHtml(usuarioTxt)}</td>
+      <td>${escapeHtml(pasajerosTxt)}</td>
+      <td>${escapeHtml(observacionesTxt)}</td>
+      <td>${itinLlegadaHtml}</td>
+      <td><strong>${escapeHtml(itinDespachoTxt)}</strong></td>
+      <td>${escapeHtml(reasonTxt)}</td>
+      <td>${dispatchBtn}</td>
+    </tr>`;
+  }).join("");
+}
+
+function renderNoDespachoTab(){
+  if (!noDespachoBody) return;
+  let baseFilterValue = noDespachoBaseFilter?.value || "";
+  const rowsForBaseOptions = getNoDespachoRowsForView({
+    searchTerm: "",
+    punto: noDespachoPuntoFilter?.value || "",
+    fromIso: noDespachoFrom?.value || "",
+    toIso: noDespachoTo?.value || ""
+  });
+  syncLlegadasBaseFilterOptions(noDespachoBaseFilter, rowsForBaseOptions);
+  baseFilterValue = noDespachoBaseFilter?.value || "";
+  const rows = getNoDespachoRowsForView({
+    searchTerm: noDespachoSearch?.value || "",
+    punto: noDespachoPuntoFilter?.value || "",
+    fromIso: noDespachoFrom?.value || "",
+    toIso: noDespachoTo?.value || "",
+    baseFilterValue
+  });
+  if (noDespachoCount) noDespachoCount.textContent = String(rows.length);
+  if (noDespachoTitle) noDespachoTitle.textContent = "Vehiculos sin despacho (3 h 30 min)";
+  if (!rows.length) {
+    noDespachoBody.innerHTML = `<tr><td colspan="14" class="muted" style="text-align:center;padding:12px">Sin registros en no despacho.</td></tr>`;
+    return;
+  }
+  noDespachoBody.innerHTML = renderNoDespachoTabRows(rows);
+  bindDispatchButtons(noDespachoBody);
+}
+
 function renderLlegadasAeropuerto(){
   if (!llegadasAeropuertoBody) return;
   const estadoMode = aeropuertoEstadoFilter?.value || "";
-  const rowsSource = getLlegadasRowsForView("104", {
-    searchTerm: aeropuertoSearch?.value || "",
+  let baseFilterValue = aeropuertoBaseFilter?.value || "";
+  const rowsForBaseOptions = getLlegadasRowsForView("104", {
+    searchTerm: "",
     estadoMode: estadoMode === "en_espera" ? "" : estadoMode,
     fromIso: aeropuertoUploadFrom?.value || "",
     toIso: aeropuertoUploadTo?.value || ""
   });
+  syncLlegadasBaseFilterOptions(aeropuertoBaseFilter, rowsForBaseOptions);
+  baseFilterValue = aeropuertoBaseFilter?.value || "";
+  const rowsSource = getLlegadasRowsForView("104", {
+    searchTerm: aeropuertoSearch?.value || "",
+    estadoMode: estadoMode === "en_espera" ? "" : estadoMode,
+    fromIso: aeropuertoUploadFrom?.value || "",
+    toIso: aeropuertoUploadTo?.value || "",
+    baseFilterValue
+  });
   const rows = estadoMode === "en_espera"
     ? getRowsFilteredByEsperaOperationalDay(rowsSource)
     : rowsSource;
-  lastAeropuertoRenderedRows = rows.slice();
-  if (llegadasAeropuertoCount) llegadasAeropuertoCount.textContent = String(rows.length);
-  if (llegadasAeropuertoTitle) llegadasAeropuertoTitle.textContent = "Ultimas Llegadas Aeropuerto (104)";
-  if (rows.length === 0) {
+  const rowsByRule = splitRowsByNoDespachoRule(rows);
+  const visibleRows = rowsByRule.activeRows;
+  lastAeropuertoRenderedRows = visibleRows.slice();
+  if (llegadasAeropuertoCount) llegadasAeropuertoCount.textContent = String(visibleRows.length);
+  if (llegadasAeropuertoTitle) llegadasAeropuertoTitle.textContent = "Ultimas Llegadas Aeropuerto 2 (104)";
+  if (visibleRows.length === 0) {
     if (llegadasAeropuertoTabs) llegadasAeropuertoTabs.innerHTML = "";
-    llegadasAeropuertoBody.innerHTML = `<tr><td colspan="8" class="muted" style="text-align:center;padding:12px">Sin llegadas de aeropuerto.</td></tr>`;
+    llegadasAeropuertoBody.innerHTML = `<tr><td colspan="12" class="muted" style="text-align:center;padding:12px">Sin llegadas de aeropuerto.</td></tr>`;
     return;
   }
   const grouped = new Map();
-  rows.forEach(row => {
+  visibleRows.forEach(row => {
     const itin = getGroupingItineraryForRow(row, estadoMode);
     if (!grouped.has(itin)) grouped.set(itin, []);
     grouped.get(itin).push(row);
@@ -2516,58 +4562,86 @@ function renderLlegadasAeropuerto(){
     });
   }
 
-  const selectedRows = rows.filter(row => rowMatchesSelectedItinerary(row, aeropuertoSelectedItinerary, estadoMode));
+  const selectedRows = visibleRows.filter(row => rowMatchesSelectedItinerary(row, aeropuertoSelectedItinerary, estadoMode));
   lastAeropuertoRenderedRows = selectedRows.slice();
   if (selectedRows.length === 0) {
-    llegadasAeropuertoBody.innerHTML = `<tr><td colspan="8" class="muted" style="text-align:center;padding:12px">Sin datos para el itinerario seleccionado.</td></tr>`;
+    llegadasAeropuertoBody.innerHTML = `<tr><td colspan="12" class="muted" style="text-align:center;padding:12px">Sin datos para el itinerario seleccionado.</td></tr>`;
     return;
   }
-  llegadasAeropuertoBody.innerHTML = selectedRows.map(row => {
-    const date = parsePlanillaDateTime(row?.hora_llegada || row?.generado_en || row?.hora_despacho);
-    const horaTxt = formatPlanillaDateTime(row?.hora_llegada || row?.generado_en || row?.hora_despacho);
-    const despachoTxt = getDespachoDateTimeText(row);
-    const operacionTxt = getOperacionEstadoText(row);
-    const haceTxt = formatTimeAgoEs(date);
-    const baseTxt = formatPlanillaCell(row?.base);
-    const internoTxt = formatPlanillaCell(row?.interno);
-    const itinLlegadaHtml = getItinerarioLlegadaCellHtml(row);
-    const itinDespachoTxt = getItinerarioDespachoText(row);
-    return `<tr>
-      <td>${escapeHtml(horaTxt)}</td>
-      <td>${escapeHtml(despachoTxt)}</td>
-      <td><strong style="color:${operacionTxt === "Despachado" ? "#065f46" : "#b45309"}">${escapeHtml(operacionTxt)}</strong></td>
-      <td><strong style="color:#1d4ed8">${escapeHtml(haceTxt)}</strong></td>
-      <td>${escapeHtml(baseTxt)}</td>
-      <td><strong style="color:#065f46">${escapeHtml(internoTxt)}</strong></td>
-      <td>${itinLlegadaHtml}</td>
-      <td><strong>${escapeHtml(itinDespachoTxt)}</strong></td>
-    </tr>`;
-  }).join("");
+  llegadasAeropuertoBody.innerHTML = renderLlegadasRowsHtml(selectedRows, false);
+  bindDispatchButtons(llegadasAeropuertoBody);
+}
+
+function renderLlegadasTerminalNorte(){
+  if (!llegadasTerminalNorteBody) return;
+  const estadoMode = terminalNorteEstadoFilter?.value || "";
+  let baseFilterValue = terminalNorteBaseFilter?.value || "";
+  const rowsForBaseOptions = getTerminalNorteRowsForView({
+    searchTerm: "",
+    estadoMode: estadoMode === "en_espera" ? "" : estadoMode,
+    fromIso: terminalNorteUploadFrom?.value || "",
+    toIso: terminalNorteUploadTo?.value || ""
+  });
+  syncLlegadasBaseFilterOptions(terminalNorteBaseFilter, rowsForBaseOptions);
+  baseFilterValue = terminalNorteBaseFilter?.value || "";
+  const rowsSource = getTerminalNorteRowsForView({
+    searchTerm: terminalNorteSearch?.value || "",
+    estadoMode: estadoMode === "en_espera" ? "" : estadoMode,
+    fromIso: terminalNorteUploadFrom?.value || "",
+    toIso: terminalNorteUploadTo?.value || "",
+    baseFilterValue
+  });
+  const rows = estadoMode === "en_espera"
+    ? getRowsFilteredByEsperaOperationalDay(rowsSource)
+    : rowsSource;
+  const rowsByRule = splitRowsByNoDespachoRule(rows);
+  const visibleRows = rowsByRule.activeRows;
+  lastTerminalNorteRenderedRows = visibleRows.slice();
+  if (llegadasTerminalNorteCount) llegadasTerminalNorteCount.textContent = String(visibleRows.length);
+  if (llegadasTerminalNorteTitle) llegadasTerminalNorteTitle.textContent = "Ultimas Llegadas Terminalnorte 2";
+  if (visibleRows.length === 0) {
+    llegadasTerminalNorteBody.innerHTML = `<tr><td colspan="12" class="muted" style="text-align:center;padding:12px">Sin llegadas de Terminalnorte.</td></tr>`;
+    return;
+  }
+  llegadasTerminalNorteBody.innerHTML = renderLlegadasRowsHtml(visibleRows, false);
+  bindDispatchButtons(llegadasTerminalNorteBody);
 }
 
 function renderLlegadasSanDiego(){
   if (!llegadasSanDiegoBody) return;
   const estadoMode = sanDiegoEstadoFilter?.value || "";
-  const rowsSource = getLlegadasRowsForView("101", {
-    searchTerm: sanDiegoSearch?.value || "",
+  let baseFilterValue = sanDiegoBaseFilter?.value || "";
+  const rowsForBaseOptions = getLlegadasRowsForView("101", {
+    searchTerm: "",
     estadoMode: estadoMode === "en_espera" ? "" : estadoMode,
     fromIso: sanDiegoUploadFrom?.value || "",
     toIso: sanDiegoUploadTo?.value || ""
   });
+  syncLlegadasBaseFilterOptions(sanDiegoBaseFilter, rowsForBaseOptions);
+  baseFilterValue = sanDiegoBaseFilter?.value || "";
+  const rowsSource = getLlegadasRowsForView("101", {
+    searchTerm: sanDiegoSearch?.value || "",
+    estadoMode: estadoMode === "en_espera" ? "" : estadoMode,
+    fromIso: sanDiegoUploadFrom?.value || "",
+    toIso: sanDiegoUploadTo?.value || "",
+    baseFilterValue
+  });
   const rows = estadoMode === "en_espera"
     ? getRowsFilteredByEsperaOperationalDay(rowsSource)
     : rowsSource;
-  lastSanDiegoRenderedRows = rows.slice();
-  if (llegadasSanDiegoCount) llegadasSanDiegoCount.textContent = String(rows.length);
-  if (llegadasSanDiegoTitle) llegadasSanDiegoTitle.textContent = "Ultimas Llegadas San Diego (101)";
-  if (rows.length === 0) {
+  const rowsByRule = splitRowsByNoDespachoRule(rows);
+  const visibleRows = rowsByRule.activeRows;
+  lastSanDiegoRenderedRows = visibleRows.slice();
+  if (llegadasSanDiegoCount) llegadasSanDiegoCount.textContent = String(visibleRows.length);
+  if (llegadasSanDiegoTitle) llegadasSanDiegoTitle.textContent = "Ultimas Llegadas San Diego 2 (101)";
+  if (visibleRows.length === 0) {
     if (llegadasSanDiegoTabs) llegadasSanDiegoTabs.innerHTML = "";
-    llegadasSanDiegoBody.innerHTML = `<tr><td colspan="8" class="muted" style="text-align:center;padding:12px">Sin llegadas de San Diego.</td></tr>`;
+    llegadasSanDiegoBody.innerHTML = `<tr><td colspan="12" class="muted" style="text-align:center;padding:12px">Sin llegadas de San Diego.</td></tr>`;
     return;
   }
 
   const grouped = new Map();
-  rows.forEach(row => {
+  visibleRows.forEach(row => {
     const itin = getGroupingItineraryForRow(row, estadoMode);
     if (!grouped.has(itin)) grouped.set(itin, []);
     grouped.get(itin).push(row);
@@ -2596,57 +4670,50 @@ function renderLlegadasSanDiego(){
     });
   }
 
-  const selectedRows = rows.filter(row => rowMatchesSelectedItinerary(row, sanDiegoSelectedItinerary, estadoMode));
+  const selectedRows = visibleRows.filter(row => rowMatchesSelectedItinerary(row, sanDiegoSelectedItinerary, estadoMode));
   lastSanDiegoRenderedRows = selectedRows.slice();
   if (selectedRows.length === 0) {
-    llegadasSanDiegoBody.innerHTML = `<tr><td colspan="8" class="muted" style="text-align:center;padding:12px">Sin datos para el itinerario seleccionado.</td></tr>`;
+    llegadasSanDiegoBody.innerHTML = `<tr><td colspan="12" class="muted" style="text-align:center;padding:12px">Sin datos para el itinerario seleccionado.</td></tr>`;
     return;
   }
-  llegadasSanDiegoBody.innerHTML = selectedRows.map(row => {
-    const date = parsePlanillaDateTime(row?.hora_llegada || row?.generado_en || row?.hora_despacho);
-    const horaTxt = formatPlanillaDateTime(row?.hora_llegada || row?.generado_en || row?.hora_despacho);
-    const despachoTxt = getDespachoDateTimeText(row);
-    const operacionTxt = getOperacionEstadoText(row);
-    const haceTxt = formatTimeAgoEs(date);
-    const baseTxt = formatPlanillaCell(row?.base);
-    const internoTxt = formatPlanillaCell(row?.interno);
-    const itinLlegadaHtml = getItinerarioLlegadaCellHtml(row);
-    const itinDespachoTxt = getItinerarioDespachoText(row);
-    return `<tr>
-      <td>${escapeHtml(horaTxt)}</td>
-      <td>${escapeHtml(despachoTxt)}</td>
-      <td><strong style="color:${operacionTxt === "Despachado" ? "#065f46" : "#b45309"}">${escapeHtml(operacionTxt)}</strong></td>
-      <td><strong style="color:#1d4ed8">${escapeHtml(haceTxt)}</strong></td>
-      <td>${escapeHtml(baseTxt)}</td>
-      <td><strong style="color:#065f46">${escapeHtml(internoTxt)}</strong></td>
-      <td>${itinLlegadaHtml}</td>
-      <td><strong>${escapeHtml(itinDespachoTxt)}</strong></td>
-    </tr>`;
-  }).join("");
+  llegadasSanDiegoBody.innerHTML = renderLlegadasRowsHtml(selectedRows, false);
+  bindDispatchButtons(llegadasSanDiegoBody);
 }
 
 function renderLlegadasNutibara(){
   if (!llegadasNutibaraBody) return;
   const estadoMode = nutibaraEstadoFilter?.value || "";
-  const rowsSource = getLlegadasRowsForView("110", {
-    searchTerm: nutibaraSearch?.value || "",
+  let baseFilterValue = nutibaraBaseFilter?.value || "";
+  const rowsForBaseOptions = getLlegadasRowsForView("110", {
+    searchTerm: "",
     estadoMode: estadoMode === "en_espera" ? "" : estadoMode,
     fromIso: nutibaraUploadFrom?.value || "",
     toIso: nutibaraUploadTo?.value || ""
   });
+  syncLlegadasBaseFilterOptions(nutibaraBaseFilter, rowsForBaseOptions);
+  baseFilterValue = nutibaraBaseFilter?.value || "";
+  const rowsSource = getLlegadasRowsForView("110", {
+    searchTerm: nutibaraSearch?.value || "",
+    estadoMode: estadoMode === "en_espera" ? "" : estadoMode,
+    fromIso: nutibaraUploadFrom?.value || "",
+    toIso: nutibaraUploadTo?.value || "",
+    baseFilterValue
+  });
   const rows = estadoMode === "en_espera"
     ? getRowsFilteredByEsperaOperationalDay(rowsSource)
     : rowsSource;
-  lastNutibaraRenderedRows = rows.slice();
-  if (llegadasNutibaraCount) llegadasNutibaraCount.textContent = String(rows.length);
-  if (llegadasNutibaraTitle) llegadasNutibaraTitle.textContent = "Ultimas Llegadas Nutibara (110)";
-  if (rows.length === 0) {
+  const rowsByRule = splitRowsByNoDespachoRule(rows);
+  const visibleRows = rowsByRule.activeRows;
+  lastNutibaraRenderedRows = visibleRows.slice();
+  if (llegadasNutibaraCount) llegadasNutibaraCount.textContent = String(visibleRows.length);
+  if (llegadasNutibaraTitle) llegadasNutibaraTitle.textContent = "Ultimas Llegadas Nutibara 2 (110)";
+  if (visibleRows.length === 0) {
     if (llegadasNutibaraTabs) llegadasNutibaraTabs.innerHTML = "";
-    llegadasNutibaraBody.innerHTML = `<tr><td colspan="8" class="muted" style="text-align:center;padding:12px">Sin llegadas de Nutibara.</td></tr>`;
+    llegadasNutibaraBody.innerHTML = `<tr><td colspan="12" class="muted" style="text-align:center;padding:12px">Sin llegadas de Nutibara.</td></tr>`;
     return;
   }
   const grouped = new Map();
-  rows.forEach(row => {
+  visibleRows.forEach(row => {
     const itin = getGroupingItineraryForRow(row, estadoMode);
     if (!grouped.has(itin)) grouped.set(itin, []);
     grouped.get(itin).push(row);
@@ -2674,49 +4741,37 @@ function renderLlegadasNutibara(){
     });
   }
 
-  const selectedRows = rows.filter(row => rowMatchesSelectedItinerary(row, nutibaraSelectedItinerary, estadoMode));
+  const selectedRows = visibleRows.filter(row => rowMatchesSelectedItinerary(row, nutibaraSelectedItinerary, estadoMode));
   lastNutibaraRenderedRows = selectedRows.slice();
   if (selectedRows.length === 0) {
-    llegadasNutibaraBody.innerHTML = `<tr><td colspan="8" class="muted" style="text-align:center;padding:12px">Sin datos para el itinerario seleccionado.</td></tr>`;
+    llegadasNutibaraBody.innerHTML = `<tr><td colspan="12" class="muted" style="text-align:center;padding:12px">Sin datos para el itinerario seleccionado.</td></tr>`;
     return;
   }
-  llegadasNutibaraBody.innerHTML = selectedRows.map(row => {
-    const date = parsePlanillaDateTime(row?.hora_llegada || row?.generado_en || row?.hora_despacho);
-    const horaTxt = formatPlanillaDateTime(row?.hora_llegada || row?.generado_en || row?.hora_despacho);
-    const despachoTxt = getDespachoDateTimeText(row);
-    const operacionTxt = getOperacionEstadoText(row);
-    const haceTxt = formatTimeAgoEs(date);
-    const baseTxt = formatPlanillaCell(row?.base);
-    const internoTxt = formatPlanillaCell(row?.interno);
-    const itinLlegadaHtml = getItinerarioLlegadaCellHtml(row);
-    const itinDespachoTxt = getItinerarioDespachoText(row);
-    return `<tr>
-      <td>${escapeHtml(horaTxt)}</td>
-      <td>${escapeHtml(despachoTxt)}</td>
-      <td><strong style="color:${operacionTxt === "Despachado" ? "#065f46" : "#b45309"}">${escapeHtml(operacionTxt)}</strong></td>
-      <td><strong style="color:#1d4ed8">${escapeHtml(haceTxt)}</strong></td>
-      <td>${escapeHtml(baseTxt)}</td>
-      <td><strong style="color:#065f46">${escapeHtml(internoTxt)}</strong></td>
-      <td>${itinLlegadaHtml}</td>
-      <td><strong>${escapeHtml(itinDespachoTxt)}</strong></td>
-    </tr>`;
-  }).join("");
+  llegadasNutibaraBody.innerHTML = renderLlegadasRowsHtml(selectedRows, false);
+  bindDispatchButtons(llegadasNutibaraBody);
 }
 
 function renderPlanillaAfiliados(){
   if (!planillaHead || !planillaBody) return;
+  const displayColumns = getPlanillaDisplayColumnKeys(planillaAfiliadosRows);
   const filtered = getPlanillaFilteredRows(planillaAfiliadosRows);
 
   if (planillaCount) planillaCount.textContent = String(filtered.length);
 
-  planillaHead.innerHTML = `<tr>${PLANILLA_VIEW_COLUMNS.map(c => `<th>${escapeHtml(c.title)}</th>`).join("")}</tr>`;
+  if (displayColumns.length === 0) {
+    planillaHead.innerHTML = "";
+    planillaBody.innerHTML = `<tr><td class="muted" style="text-align:center;padding:12px">Sin datos.</td></tr>`;
+    return;
+  }
+
+  planillaHead.innerHTML = `<tr>${displayColumns.map(col => `<th>${escapeHtml(formatPlanillaHeaderLabel(col))}</th>`).join("")}</tr>`;
   if (filtered.length === 0) {
-    planillaBody.innerHTML = `<tr><td colspan="${PLANILLA_VIEW_COLUMNS.length}" class="muted" style="text-align:center;padding:12px">No hay coincidencias.</td></tr>`;
+    planillaBody.innerHTML = `<tr><td colspan="${displayColumns.length}" class="muted" style="text-align:center;padding:12px">No hay coincidencias.</td></tr>`;
     return;
   }
 
   planillaBody.innerHTML = filtered.map(row => {
-    const cells = PLANILLA_VIEW_COLUMNS.map(col => `<td>${escapeHtml(formatPlanillaCell(col.value(row)))}</td>`).join("");
+    const cells = displayColumns.map(col => `<td>${escapeHtml(getPlanillaDisplayValueByColumn(row, col))}</td>`).join("");
     return `<tr>${cells}</tr>`;
   }).join("");
 }
@@ -2733,12 +4788,16 @@ function handleDownloadLlegadas(){
 
 function handleDownloadDespachos(){
   const filtered = getFilteredPlanillaRowsForExport();
-  const onlyDespachos = filtered.filter(row => !!String(row?.hora_despacho || "").trim());
+  const onlyDespachos = filtered.filter(row => hasValidDespacho(row));
   exportPlanillaRowsToExcel(onlyDespachos, "despachos", "despachos_planilla");
 }
 
 function handleDownloadLlegadasAeropuerto(){
   exportPlanillaRowsToExcel(lastAeropuertoRenderedRows, "llegadas", "llegadas_aeropuerto");
+}
+
+function handleDownloadLlegadasTerminalNorte(){
+  exportPlanillaRowsToExcel(lastTerminalNorteRenderedRows, "llegadas", "llegadas_terminalnorte");
 }
 
 function handleDownloadLlegadasSanDiego(){
@@ -2757,8 +4816,37 @@ function isPlanillaRelatedTab(tabId){
   const id = String(tabId || "");
   return id === "planilla-afiliados"
     || id === "llegadas-aeropuerto"
+    || id === "llegadas-terminalnorte"
     || id === "llegadas-san-diego"
-    || id === "llegadas-nutibara";
+    || id === "llegadas-nutibara"
+    || id === "no-despacho";
+}
+
+function getAllowedPlanillaTableSources(){
+  return [PLANILLA_TABLE_NAME];
+}
+
+function resetPlanillaCache(){
+  planillaAfiliadosRows = [];
+  invalidatePlanillaDispatchResolutionCache();
+  planillaAfiliadosLoadedOnce = false;
+  planillaLastLoadedAt = 0;
+}
+
+function setCurrentPlanillaTableSource(nextTable){
+  const normalized = String(nextTable || "").trim();
+  currentPlanillaTableName = normalized === PLANILLA_TABLE_NAME ? PLANILLA_TABLE_NAME : PLANILLA_TABLE_NAME;
+  try {
+    localStorage.setItem(PLANILLA_TABLE_SOURCE_STORAGE_KEY, currentPlanillaTableName);
+  } catch (e) {}
+  if (planillaTableSource) planillaTableSource.value = currentPlanillaTableName;
+}
+
+function loadPlanillaTableSourcePreference(){
+  try {
+    localStorage.removeItem(PLANILLA_TABLE_SOURCE_STORAGE_KEY);
+  } catch (e) {}
+  setCurrentPlanillaTableSource(PLANILLA_TABLE_NAME);
 }
 
 async function ensureFreshPlanillaData(options = {}){
@@ -2771,32 +4859,45 @@ async function ensureFreshPlanillaData(options = {}){
   }
   renderPlanillaAfiliados();
   renderLlegadasAeropuerto();
+  renderLlegadasTerminalNorte();
   renderLlegadasSanDiego();
   renderLlegadasNutibara();
+  renderNoDespachoTab();
+  renderFueraListaTab();
 }
 
 async function loadPlanillaAfiliadosFromSupabase(){
   if (planillaAfiliadosLoading) return;
   if (!currentUserId) return;
+  currentPlanillaTableName = PLANILLA_TABLE_NAME;
+  if (planillaTableSource) planillaTableSource.value = PLANILLA_TABLE_NAME;
   planillaAfiliadosLoading = true;
-  if (planillaStatus) planillaStatus.textContent = "Consultando Supabase...";
+  if (planillaStatus) planillaStatus.textContent = `Consultando Supabase (${currentPlanillaTableName})...`;
+  if (llegadasTerminalNorteStatus) llegadasTerminalNorteStatus.textContent = "Consultando...";
+  if (noDespachoStatus) noDespachoStatus.textContent = "Consultando...";
   try {
+    const selectColumns = getPlanillaSelectColumnsForCurrentTable();
     const { data, error } = await planillaSupabaseClient
-      .from(PLANILLA_TABLE_NAME)
-      .select("*")
+      .from(currentPlanillaTableName)
+      .select(selectColumns)
       .order("hora_llegada", { ascending: false, nullsFirst: false })
       .limit(2000);
     if (error) throw error;
     planillaAfiliadosRows = Array.isArray(data) ? data : [];
+    await enrichPlanillaRowsWithOptionalColumns(planillaAfiliadosRows);
+    invalidatePlanillaDispatchResolutionCache();
     planillaAfiliadosLoadedOnce = true;
     planillaLastLoadedAt = Date.now();
     renderPlanillaAfiliados();
     renderLlegadasAeropuerto();
+    renderLlegadasTerminalNorte();
     renderLlegadasSanDiego();
     renderLlegadasNutibara();
+    renderNoDespachoTab();
+    renderFueraListaTab();
     if (planillaStatus) {
       const stamp = new Date().toLocaleString("es-CO");
-      planillaStatus.textContent = `Actualizado: ${stamp}`;
+      planillaStatus.textContent = `Actualizado: ${stamp} | Tabla: ${currentPlanillaTableName}`;
     }
     if (llegadasAeropuertoStatus) {
       const stamp2 = new Date().toLocaleString("es-CO");
@@ -2806,17 +4907,27 @@ async function loadPlanillaAfiliadosFromSupabase(){
       const stampSd = new Date().toLocaleString("es-CO");
       llegadasSanDiegoStatus.textContent = `Actualizado: ${stampSd}`;
     }
+    if (llegadasTerminalNorteStatus) {
+      const stampTn = new Date().toLocaleString("es-CO");
+      llegadasTerminalNorteStatus.textContent = `Actualizado: ${stampTn}`;
+    }
     if (llegadasNutibaraStatus) {
       const stamp3 = new Date().toLocaleString("es-CO");
       llegadasNutibaraStatus.textContent = `Actualizado: ${stamp3}`;
     }
+    if (noDespachoStatus) {
+      const stamp4 = new Date().toLocaleString("es-CO");
+      noDespachoStatus.textContent = `Actualizado: ${stamp4}`;
+    }
   } catch (error) {
-    console.error("Error cargando planilla_afiliados:", error);
+    console.error(`Error cargando ${currentPlanillaTableName}:`, error);
     if (planillaStatus) planillaStatus.textContent = `Error: ${error?.message || "consulta fallida"}`;
     if (llegadasAeropuertoStatus) llegadasAeropuertoStatus.textContent = `Error: ${error?.message || "consulta fallida"}`;
     if (llegadasSanDiegoStatus) llegadasSanDiegoStatus.textContent = `Error: ${error?.message || "consulta fallida"}`;
+    if (llegadasTerminalNorteStatus) llegadasTerminalNorteStatus.textContent = `Error: ${error?.message || "consulta fallida"}`;
     if (llegadasNutibaraStatus) llegadasNutibaraStatus.textContent = `Error: ${error?.message || "consulta fallida"}`;
-    showToast("No se pudo cargar planilla_afiliados desde Supabase.", "err");
+    if (noDespachoStatus) noDespachoStatus.textContent = `Error: ${error?.message || "consulta fallida"}`;
+    showToast(`No se pudo cargar ${currentPlanillaTableName} desde Supabase.`, "err");
   } finally {
     planillaAfiliadosLoading = false;
   }
@@ -4130,6 +6241,7 @@ async function loadDriversFromCSV() {
   const csvUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vThNrFZLbNklMFtPeg0wF4TA1vZHnZ4YNMmGcnHfty_RoNuAQw__iV2GMXqTsv36MPiks1ARpYui1JK/pub?gid=0&single=true&output=csv';
   
   csvStatus.innerHTML = 'Cargando conductores...';
+  if (conductoresCsvStatus) conductoresCsvStatus.textContent = "Cargando CSV...";
   
   try {
     const response = await fetch(csvUrl, { cache: "no-cache" });
@@ -4139,22 +6251,43 @@ async function loadDriversFromCSV() {
     const delimiter = lines[0].includes('\t') ? '\t' : ',';
     const headers = lines[0].split(delimiter).map(h => h.trim());
     
+    const drIdIdx = headers.findIndex(h => norm(h) === 'DR_ID');
+    const cedulaIdx = headers.findIndex(h => norm(h) === 'CEDULA');
+    const fleetIdx = headers.findIndex(h => norm(h) === 'FLEET');
     const nombreIdx = headers.findIndex(h => norm(h) === 'NOMBRE');
     const emailIdx = headers.findIndex(h => norm(h) === 'EMAIL');
     const statusIdx = headers.findIndex(h => norm(h) === 'STATUS');
+    const celularIdx = headers.findIndex(h => norm(h) === 'CELULAR');
     
     const newDriversByBase = {};
+    const newDriversCatalogRows = [];
     let totalEnabled = 0;
     
     for (let i = 1; i < lines.length; i++) {
       const values = lines[i].split(delimiter);
+      const drId = drIdIdx !== -1 ? String(values[drIdIdx] || "").trim() : "";
+      const cedula = cedulaIdx !== -1 ? String(values[cedulaIdx] || "").trim() : "";
+      const fleet = fleetIdx !== -1 ? String(values[fleetIdx] || "").trim() : "";
       const nombre = values[nombreIdx]?.trim() || '';
       const email = values[emailIdx]?.trim() || '';
       const status = statusIdx !== -1 ? values[statusIdx]?.trim().toUpperCase() : 'ENABLED';
+      const celular = celularIdx !== -1 ? String(values[celularIdx] || "").trim() : "";
+      const base = getBaseCanonical(email.match(/BASE\s*(\d+)/i)?.[1] || "");
+      if (drId || nombre || cedula) {
+        newDriversCatalogRows.push({
+          dr_id: drId,
+          cedula,
+          fleet,
+          nombre,
+          status,
+          email,
+          celular,
+          base
+        });
+      }
       
-      const baseMatch = email.match(/BASE\s*(\d+)/i);
-      if (baseMatch && nombre && status === 'ENABLED') {
-        const baseNumber = baseMatch[1];
+      if (base && nombre && status === 'ENABLED') {
+        const baseNumber = base;
         if (!newDriversByBase[baseNumber]) newDriversByBase[baseNumber] = [];
         newDriversByBase[baseNumber].push(nombre);
         totalEnabled++;
@@ -4167,10 +6300,17 @@ async function loadDriversFromCSV() {
     });
     
     driversByBase = newDriversByBase;
+    driversCatalogRows = newDriversCatalogRows;
     
     const totalBases = Object.keys(driversByBase).length;
     lblDriversCount.textContent = `Conductores: ${totalEnabled} en ${totalBases} bases`;
     csvStatus.innerHTML = `Cargados ${totalEnabled} conductores`;
+    if (conductoresCsvStatus) {
+      const stamp = new Date().toLocaleString("es-CO");
+      conductoresCsvStatus.textContent = `Actualizado: ${stamp}`;
+    }
+    refreshConductoresCsvBaseOptions();
+    renderConductoresCsvTab();
     
     fillStartBases();
     if (currentBase) {
@@ -4183,6 +6323,7 @@ async function loadDriversFromCSV() {
   } catch (error) {
     console.error('Error:', error);
     csvStatus.innerHTML = 'Error al cargar conductores';
+    if (conductoresCsvStatus) conductoresCsvStatus.textContent = `Error: ${error?.message || "consulta fallida"}`;
   } finally {
     isLoadingDrivers = false;
   }
@@ -5168,11 +7309,23 @@ document.querySelectorAll('.tab').forEach(tab => {
     if (tabId === 'llegadas-aeropuerto') {
       ensureFreshPlanillaData({ force: true });
     }
+    if (tabId === 'llegadas-terminalnorte') {
+      ensureFreshPlanillaData({ force: true });
+    }
     if (tabId === 'llegadas-san-diego') {
       ensureFreshPlanillaData({ force: true });
     }
     if (tabId === 'llegadas-nutibara') {
       ensureFreshPlanillaData({ force: true });
+    }
+    if (tabId === 'no-despacho') {
+      ensureFreshPlanillaData({ force: true });
+    }
+    if (tabId === 'fuera-lista') {
+      renderFueraListaTab();
+    }
+    if (tabId === 'conductores-csv') {
+      renderConductoresCsvTab();
     }
     if (tabId === 'consulta') {
       renderConsultaBaseView();
@@ -5911,6 +8064,10 @@ function bindUIEvents(){
 
   const btnReloadDrivers = document.getElementById("btnReloadDrivers");
   if (btnReloadDrivers) btnReloadDrivers.addEventListener("click", loadDriversFromCSV);
+  if (btnRefreshConductoresCsv) btnRefreshConductoresCsv.addEventListener("click", loadDriversFromCSV);
+  if (conductoresCsvSearch) conductoresCsvSearch.addEventListener("input", renderConductoresCsvTab);
+  if (conductoresCsvBaseFilter) conductoresCsvBaseFilter.addEventListener("change", renderConductoresCsvTab);
+  if (conductoresCsvStatusFilter) conductoresCsvStatusFilter.addEventListener("change", renderConductoresCsvTab);
   if (btnRefreshCompliance) btnRefreshCompliance.addEventListener("click", renderAdminComplianceDashboard);
   if (adminComplianceDate) adminComplianceDate.addEventListener("change", renderAdminComplianceDashboard);
   if (btnApplyConsulta) btnApplyConsulta.addEventListener("click", renderConsultaBaseView);
@@ -5955,6 +8112,13 @@ function bindUIEvents(){
   if (btnRefreshPlanilla) {
     btnRefreshPlanilla.addEventListener("click", loadPlanillaAfiliadosFromSupabase);
   }
+  if (planillaTableSource) {
+    planillaTableSource.addEventListener("change", async () => {
+      setCurrentPlanillaTableSource(planillaTableSource.value);
+      resetPlanillaCache();
+      await loadPlanillaAfiliadosFromSupabase();
+    });
+  }
   if (btnDownloadLlegadas) {
     btnDownloadLlegadas.addEventListener("click", handleDownloadLlegadas);
   }
@@ -5966,16 +8130,29 @@ function bindUIEvents(){
   }
   if (aeropuertoSearch) aeropuertoSearch.addEventListener("input", renderLlegadasAeropuerto);
   if (aeropuertoEstadoFilter) aeropuertoEstadoFilter.addEventListener("change", renderLlegadasAeropuerto);
+  if (aeropuertoBaseFilter) aeropuertoBaseFilter.addEventListener("change", renderLlegadasAeropuerto);
   if (aeropuertoUploadFrom) aeropuertoUploadFrom.addEventListener("change", renderLlegadasAeropuerto);
   if (aeropuertoUploadTo) aeropuertoUploadTo.addEventListener("change", renderLlegadasAeropuerto);
   if (btnDownloadLlegadasAeropuerto) {
     btnDownloadLlegadasAeropuerto.addEventListener("click", handleDownloadLlegadasAeropuerto);
+  }
+  if (btnRefreshLlegadasTerminalNorte) {
+    btnRefreshLlegadasTerminalNorte.addEventListener("click", loadPlanillaAfiliadosFromSupabase);
+  }
+  if (terminalNorteSearch) terminalNorteSearch.addEventListener("input", renderLlegadasTerminalNorte);
+  if (terminalNorteEstadoFilter) terminalNorteEstadoFilter.addEventListener("change", renderLlegadasTerminalNorte);
+  if (terminalNorteBaseFilter) terminalNorteBaseFilter.addEventListener("change", renderLlegadasTerminalNorte);
+  if (terminalNorteUploadFrom) terminalNorteUploadFrom.addEventListener("change", renderLlegadasTerminalNorte);
+  if (terminalNorteUploadTo) terminalNorteUploadTo.addEventListener("change", renderLlegadasTerminalNorte);
+  if (btnDownloadLlegadasTerminalNorte) {
+    btnDownloadLlegadasTerminalNorte.addEventListener("click", handleDownloadLlegadasTerminalNorte);
   }
   if (btnRefreshLlegadasSanDiego) {
     btnRefreshLlegadasSanDiego.addEventListener("click", loadPlanillaAfiliadosFromSupabase);
   }
   if (sanDiegoSearch) sanDiegoSearch.addEventListener("input", renderLlegadasSanDiego);
   if (sanDiegoEstadoFilter) sanDiegoEstadoFilter.addEventListener("change", renderLlegadasSanDiego);
+  if (sanDiegoBaseFilter) sanDiegoBaseFilter.addEventListener("change", renderLlegadasSanDiego);
   if (sanDiegoUploadFrom) sanDiegoUploadFrom.addEventListener("change", renderLlegadasSanDiego);
   if (sanDiegoUploadTo) sanDiegoUploadTo.addEventListener("change", renderLlegadasSanDiego);
   if (btnDownloadLlegadasSanDiego) {
@@ -5986,11 +8163,21 @@ function bindUIEvents(){
   }
   if (nutibaraSearch) nutibaraSearch.addEventListener("input", renderLlegadasNutibara);
   if (nutibaraEstadoFilter) nutibaraEstadoFilter.addEventListener("change", renderLlegadasNutibara);
+  if (nutibaraBaseFilter) nutibaraBaseFilter.addEventListener("change", renderLlegadasNutibara);
   if (nutibaraUploadFrom) nutibaraUploadFrom.addEventListener("change", renderLlegadasNutibara);
   if (nutibaraUploadTo) nutibaraUploadTo.addEventListener("change", renderLlegadasNutibara);
   if (btnDownloadLlegadasNutibara) {
     btnDownloadLlegadasNutibara.addEventListener("click", handleDownloadLlegadasNutibara);
   }
+  if (btnRefreshNoDespacho) {
+    btnRefreshNoDespacho.addEventListener("click", loadPlanillaAfiliadosFromSupabase);
+  }
+  if (noDespachoSearch) noDespachoSearch.addEventListener("input", renderNoDespachoTab);
+  if (noDespachoPuntoFilter) noDespachoPuntoFilter.addEventListener("change", renderNoDespachoTab);
+  if (noDespachoBaseFilter) noDespachoBaseFilter.addEventListener("change", renderNoDespachoTab);
+  if (noDespachoFrom) noDespachoFrom.addEventListener("change", renderNoDespachoTab);
+  if (noDespachoTo) noDespachoTo.addEventListener("change", renderNoDespachoTab);
+  if (fueraListaSearch) fueraListaSearch.addEventListener("input", renderFueraListaTab);
   if (planillaFilterInterno) planillaFilterInterno.addEventListener("input", renderPlanillaAfiliados);
   if (planillaFilterBase) planillaFilterBase.addEventListener("input", renderPlanillaAfiliados);
   if (planillaFilterHoraLlegada) planillaFilterHoraLlegada.addEventListener("input", renderPlanillaAfiliados);
@@ -5999,6 +8186,7 @@ function bindUIEvents(){
 
 // ==================== INIT ====================
 async function initializeApp(){
+  loadPlanillaTableSourcePreference();
   loadBasesFromStorage();
   await loadDriversFromCSV();
   await loadLatestProgramacionFromSupabase();
@@ -6032,6 +8220,7 @@ async function initializeApp(){
   renderDrivers();
   renderNovedades();
   renderConsultaBaseView();
+  renderFueraListaTab();
 }
 
 function bindWindowEvents(){
@@ -6107,6 +8296,9 @@ function bindWindowEvents(){
 
   window.addEventListener("resize", adjustDynamicTableViewport);
 }
+
+
+
 
 
 

@@ -426,6 +426,21 @@
     .row{gap:8px}
     .topbar .row{width:100%}
     .topbar .row > *{max-width:100%}
+    .mobile-filters{
+      display:grid !important;
+      grid-template-columns:1fr !important;
+      align-items:stretch !important;
+      gap:8px !important;
+    }
+    .mobile-filters > *{
+      width:100% !important;
+      max-width:100% !important;
+    }
+    .mobile-filters h3{
+      font-size:17px;
+      line-height:1.25;
+      margin:0 0 2px 0 !important;
+    }
     input[type="date"], input[type="text"], input[type="email"], input[type="password"], select{
       min-height:40px;
     }
@@ -486,6 +501,20 @@
       background:transparent !important;
       word-break:break-word;
     }
+    #llegadasAeropuertoTable tbody td[data-mobile-secondary="1"],
+    #llegadasTerminalNorteTable tbody td[data-mobile-secondary="1"],
+    #llegadasSanDiegoTable tbody td[data-mobile-secondary="1"],
+    #llegadasNutibaraTable tbody td[data-mobile-secondary="1"],
+    #noDespachoTable tbody td[data-mobile-secondary="1"]{
+      display:none;
+    }
+    #llegadasAeropuertoTable tbody tr.mobile-expanded td[data-mobile-secondary="1"],
+    #llegadasTerminalNorteTable tbody tr.mobile-expanded td[data-mobile-secondary="1"],
+    #llegadasSanDiegoTable tbody tr.mobile-expanded td[data-mobile-secondary="1"],
+    #llegadasNutibaraTable tbody tr.mobile-expanded td[data-mobile-secondary="1"],
+    #noDespachoTable tbody tr.mobile-expanded td[data-mobile-secondary="1"]{
+      display:grid;
+    }
 
     #llegadasAeropuertoTable tbody td:last-child,
     #llegadasTerminalNorteTable tbody td:last-child,
@@ -516,7 +545,13 @@
     #noDespachoTable .row{
       justify-content:flex-start;
     }
+    .btn-mobile-more{display:inline-flex}
   }
+  @media (min-width: 861px){
+    .btn-mobile-more{display:none !important}
+  }
+
+
 
 
 

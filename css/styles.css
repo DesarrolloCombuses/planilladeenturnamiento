@@ -415,6 +415,111 @@
     th,td{padding:6px}
   }
 
+  /* ===== Mobile first readability for arrivals tables ===== */
+  @media (max-width: 860px){
+    html{-webkit-text-size-adjust:100%}
+    body{font-size:15px}
+    .wrap{padding:10px}
+    .card{padding:10px;border-radius:12px}
+    .btn{padding:10px 12px;font-size:13px}
+    .pill{font-size:11px}
+    .row{gap:8px}
+    .topbar .row{width:100%}
+    .topbar .row > *{max-width:100%}
+    input[type="date"], input[type="text"], input[type="email"], input[type="password"], select{
+      min-height:40px;
+    }
+    .modal-card{
+      width:min(96vw, 760px);
+      padding:12px;
+    }
+    .modal-title{font-size:18px}
+    .modal-actions{flex-wrap:wrap}
+    .modal-actions .btn{flex:1 1 150px}
+
+    #llegadasAeropuertoTable thead,
+    #llegadasTerminalNorteTable thead,
+    #llegadasSanDiegoTable thead,
+    #llegadasNutibaraTable thead,
+    #noDespachoTable thead{
+      display:none;
+    }
+
+    #llegadasAeropuertoTable,
+    #llegadasTerminalNorteTable,
+    #llegadasSanDiegoTable,
+    #llegadasNutibaraTable,
+    #noDespachoTable{
+      border-collapse:separate;
+      border-spacing:0 10px;
+      width:100%;
+      table-layout:fixed;
+    }
+
+    #llegadasAeropuertoTable tbody tr,
+    #llegadasTerminalNorteTable tbody tr,
+    #llegadasSanDiegoTable tbody tr,
+    #llegadasNutibaraTable tbody tr,
+    #noDespachoTable tbody tr{
+      display:block;
+      border:1px solid #dbe3f0;
+      border-radius:12px;
+      background:#fff;
+      box-shadow:0 4px 14px rgba(15,23,42,.08);
+      padding:6px 8px;
+      margin-bottom:8px;
+    }
+
+    #llegadasAeropuertoTable tbody td,
+    #llegadasTerminalNorteTable tbody td,
+    #llegadasSanDiegoTable tbody td,
+    #llegadasNutibaraTable tbody td,
+    #noDespachoTable tbody td{
+      display:grid;
+      grid-template-columns:minmax(112px, 42%) 1fr;
+      gap:8px;
+      align-items:start;
+      border:none;
+      border-bottom:1px dashed #e5e7eb;
+      padding:7px 4px;
+      font-size:13px;
+      background:transparent !important;
+      word-break:break-word;
+    }
+
+    #llegadasAeropuertoTable tbody td:last-child,
+    #llegadasTerminalNorteTable tbody td:last-child,
+    #llegadasSanDiegoTable tbody td:last-child,
+    #llegadasNutibaraTable tbody td:last-child,
+    #noDespachoTable tbody td:last-child{
+      border-bottom:none;
+      padding-bottom:2px;
+    }
+
+    #llegadasAeropuertoTable tbody td::before,
+    #llegadasTerminalNorteTable tbody td::before,
+    #llegadasSanDiegoTable tbody td::before,
+    #llegadasNutibaraTable tbody td::before,
+    #noDespachoTable tbody td::before{
+      content:attr(data-label);
+      font-size:11px;
+      font-weight:800;
+      color:#475569;
+      text-transform:uppercase;
+      letter-spacing:.02em;
+    }
+
+    #llegadasAeropuertoTable .row,
+    #llegadasTerminalNorteTable .row,
+    #llegadasSanDiegoTable .row,
+    #llegadasNutibaraTable .row,
+    #noDespachoTable .row{
+      justify-content:flex-start;
+    }
+  }
+
+
+
 
 
 

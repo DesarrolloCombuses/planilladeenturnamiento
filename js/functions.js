@@ -3725,6 +3725,7 @@ function canRemoveRowFromArrivalList(row){
 
 function getDispatchButtonHtml(row){
   const rowUiId = ensureRowUiId(row);
+  const mobileMoreBtn = `<button type="button" class="btn btn-ghost btn-mobile-more" data-row-ui="${escapeHtml(rowUiId)}" title="Mostrar mas datos">Ver mas</button>`;
   const editBtn = `<button type="button" class="btn btn-ghost btn-edit-planilla" data-row-ui="${escapeHtml(rowUiId)}" title="Editar pasajeros y observaciones">Editar</button>`;
   const loadingRemove = removingFromListRowUiIds.has(rowUiId);
   const removeDisabled = loadingRemove || !canRemoveRowFromArrivalList(row);
@@ -3741,7 +3742,7 @@ function getDispatchButtonHtml(row){
       ? "Cancelar este despacho en Sonar"
       : "No se puede cancelar: falta regId guardado";
     const cancelBtn = `<button type="button" class="btn btn-danger btn-cancel-sonar" data-row-ui="${escapeHtml(rowUiId)}" ${loadingCancel || !canCancel ? "disabled" : ""} title="${escapeHtml(title)}">${escapeHtml(label)}</button>`;
-    return `<div class="row" style="gap:6px;flex-wrap:wrap">${cancelBtn}${removeBtn}${editBtn}</div>`;
+    return `<div class="row" style="gap:6px;flex-wrap:wrap">${cancelBtn}${removeBtn}${editBtn}${mobileMoreBtn}</div>`;
   }
   const loading = dispatchingRowUiIds.has(rowUiId);
   const disabled = loading || !canDispatchRow(row);
@@ -3750,7 +3751,7 @@ function getDispatchButtonHtml(row){
     ? "Requiere MID."
     : "Enviar despacho a Sonar";
   const dispatchBtn = `<button type="button" class="btn btn-ghost btn-dispatch-sonar" data-row-ui="${escapeHtml(rowUiId)}" ${disabled ? "disabled" : ""} title="${escapeHtml(title)}">${escapeHtml(label)}</button>`;
-  return `<div class="row" style="gap:6px;flex-wrap:wrap">${dispatchBtn}${removeBtn}${editBtn}</div>`;
+  return `<div class="row" style="gap:6px;flex-wrap:wrap">${dispatchBtn}${removeBtn}${editBtn}${mobileMoreBtn}</div>`;
 }
 
 async function sendOutOfListWebhook(entry){
@@ -4335,6 +4336,14 @@ function bindDispatchButtons(containerEl){
       handleEditPlanillaRow(rowUiId);
     });
   });
+  containerEl.querySelectorAll(".btn-mobile-more[data-row-ui]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const tr = btn.closest("tr");
+      if (!tr) return;
+      const expanded = tr.classList.toggle("mobile-expanded");
+      btn.textContent = expanded ? "Ver menos" : "Ver mas";
+    });
+  });
 }
 
 function renderLlegadasRowsHtml(rowsInput, includeReason){
@@ -4362,12 +4371,12 @@ function renderLlegadasRowsHtml(rowsInput, includeReason){
       <td data-label="Hace"><strong style="color:#1d4ed8">${escapeHtml(haceTxt)}</strong></td>
       <td data-label="Base">${escapeHtml(baseTxt)}</td>
       <td data-label="Interno"><strong style="color:#065f46">${escapeHtml(internoTxt)}</strong></td>
-      <td data-label="Usuario">${escapeHtml(usuarioTxt)}</td>
-      <td data-label="Pasajeros">${escapeHtml(pasajerosTxt)}</td>
-      <td data-label="Observaciones">${escapeHtml(observacionesTxt)}</td>
-      <td data-label="Itinerario llegada">${itinLlegadaHtml}</td>
-      <td data-label="Itinerario despacho"><strong>${escapeHtml(itinDespachoTxt)}</strong></td>
-      ${includeReason ? `<td data-label="Motivo no despacho">${escapeHtml(reasonTxt)}</td>` : ""}
+      <td data-label="Usuario" data-mobile-secondary="1">${escapeHtml(usuarioTxt)}</td>
+      <td data-label="Pasajeros" data-mobile-secondary="1">${escapeHtml(pasajerosTxt)}</td>
+      <td data-label="Observaciones" data-mobile-secondary="1">${escapeHtml(observacionesTxt)}</td>
+      <td data-label="Itinerario llegada" data-mobile-secondary="1">${itinLlegadaHtml}</td>
+      <td data-label="Itinerario despacho" data-mobile-secondary="1"><strong>${escapeHtml(itinDespachoTxt)}</strong></td>
+      ${includeReason ? `<td data-label="Motivo no despacho" data-mobile-secondary="1">${escapeHtml(reasonTxt)}</td>` : ""}
       <td data-label="Accion">${dispatchBtn}</td>
     </tr>`;
   }).join("");
@@ -4462,12 +4471,12 @@ function renderNoDespachoTabRows(rowsInput){
       <td data-label="Hace"><strong style="color:#1d4ed8">${escapeHtml(haceTxt)}</strong></td>
       <td data-label="Base">${escapeHtml(baseTxt)}</td>
       <td data-label="Interno"><strong style="color:#065f46">${escapeHtml(internoTxt)}</strong></td>
-      <td data-label="Usuario">${escapeHtml(usuarioTxt)}</td>
-      <td data-label="Pasajeros">${escapeHtml(pasajerosTxt)}</td>
-      <td data-label="Observaciones">${escapeHtml(observacionesTxt)}</td>
-      <td data-label="Itinerario llegada">${itinLlegadaHtml}</td>
-      <td data-label="Itinerario despacho"><strong>${escapeHtml(itinDespachoTxt)}</strong></td>
-      <td data-label="Motivo no despacho">${escapeHtml(reasonTxt)}</td>
+      <td data-label="Usuario" data-mobile-secondary="1">${escapeHtml(usuarioTxt)}</td>
+      <td data-label="Pasajeros" data-mobile-secondary="1">${escapeHtml(pasajerosTxt)}</td>
+      <td data-label="Observaciones" data-mobile-secondary="1">${escapeHtml(observacionesTxt)}</td>
+      <td data-label="Itinerario llegada" data-mobile-secondary="1">${itinLlegadaHtml}</td>
+      <td data-label="Itinerario despacho" data-mobile-secondary="1"><strong>${escapeHtml(itinDespachoTxt)}</strong></td>
+      <td data-label="Motivo no despacho" data-mobile-secondary="1">${escapeHtml(reasonTxt)}</td>
       <td data-label="Accion">${dispatchBtn}</td>
     </tr>`;
   }).join("");
@@ -8296,6 +8305,7 @@ function bindWindowEvents(){
 
   window.addEventListener("resize", adjustDynamicTableViewport);
 }
+
 
 
 

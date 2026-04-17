@@ -4356,19 +4356,19 @@ function renderLlegadasRowsHtml(rowsInput, includeReason){
     const reasonTxt = includeReason ? formatPlanillaCell(row?.__noDespachoReason || "-") : "";
     const dispatchBtn = getDispatchButtonHtml(row);
     return `<tr>
-      <td>${escapeHtml(horaTxt)}</td>
-      <td>${escapeHtml(despachoTxt)}</td>
-      <td><strong style="color:${operacionTxt === "Despachado" ? "#065f46" : "#b45309"}">${escapeHtml(operacionTxt)}</strong></td>
-      <td><strong style="color:#1d4ed8">${escapeHtml(haceTxt)}</strong></td>
-      <td>${escapeHtml(baseTxt)}</td>
-      <td><strong style="color:#065f46">${escapeHtml(internoTxt)}</strong></td>
-      <td>${escapeHtml(usuarioTxt)}</td>
-      <td>${escapeHtml(pasajerosTxt)}</td>
-      <td>${escapeHtml(observacionesTxt)}</td>
-      <td>${itinLlegadaHtml}</td>
-      <td><strong>${escapeHtml(itinDespachoTxt)}</strong></td>
-      ${includeReason ? `<td>${escapeHtml(reasonTxt)}</td>` : ""}
-      <td>${dispatchBtn}</td>
+      <td data-label="Hora ultima llegada">${escapeHtml(horaTxt)}</td>
+      <td data-label="Despacho">${escapeHtml(despachoTxt)}</td>
+      <td data-label="Estado"><strong style="color:${operacionTxt === "Despachado" ? "#065f46" : "#b45309"}">${escapeHtml(operacionTxt)}</strong></td>
+      <td data-label="Hace"><strong style="color:#1d4ed8">${escapeHtml(haceTxt)}</strong></td>
+      <td data-label="Base">${escapeHtml(baseTxt)}</td>
+      <td data-label="Interno"><strong style="color:#065f46">${escapeHtml(internoTxt)}</strong></td>
+      <td data-label="Usuario">${escapeHtml(usuarioTxt)}</td>
+      <td data-label="Pasajeros">${escapeHtml(pasajerosTxt)}</td>
+      <td data-label="Observaciones">${escapeHtml(observacionesTxt)}</td>
+      <td data-label="Itinerario llegada">${itinLlegadaHtml}</td>
+      <td data-label="Itinerario despacho"><strong>${escapeHtml(itinDespachoTxt)}</strong></td>
+      ${includeReason ? `<td data-label="Motivo no despacho">${escapeHtml(reasonTxt)}</td>` : ""}
+      <td data-label="Accion">${dispatchBtn}</td>
     </tr>`;
   }).join("");
 }
@@ -4455,20 +4455,20 @@ function renderNoDespachoTabRows(rowsInput){
     const reasonTxt = formatPlanillaCell(row?.__noDespachoReason || "-");
     const dispatchBtn = getDispatchButtonHtml(row);
     return `<tr>
-      <td>${escapeHtml(pointTxt)}</td>
-      <td>${escapeHtml(horaTxt)}</td>
-      <td>${escapeHtml(despachoTxt)}</td>
-      <td><strong style="color:${operacionTxt === "Despachado" ? "#065f46" : "#b45309"}">${escapeHtml(operacionTxt)}</strong></td>
-      <td><strong style="color:#1d4ed8">${escapeHtml(haceTxt)}</strong></td>
-      <td>${escapeHtml(baseTxt)}</td>
-      <td><strong style="color:#065f46">${escapeHtml(internoTxt)}</strong></td>
-      <td>${escapeHtml(usuarioTxt)}</td>
-      <td>${escapeHtml(pasajerosTxt)}</td>
-      <td>${escapeHtml(observacionesTxt)}</td>
-      <td>${itinLlegadaHtml}</td>
-      <td><strong>${escapeHtml(itinDespachoTxt)}</strong></td>
-      <td>${escapeHtml(reasonTxt)}</td>
-      <td>${dispatchBtn}</td>
+      <td data-label="Punto">${escapeHtml(pointTxt)}</td>
+      <td data-label="Hora ultima llegada">${escapeHtml(horaTxt)}</td>
+      <td data-label="Despacho">${escapeHtml(despachoTxt)}</td>
+      <td data-label="Estado"><strong style="color:${operacionTxt === "Despachado" ? "#065f46" : "#b45309"}">${escapeHtml(operacionTxt)}</strong></td>
+      <td data-label="Hace"><strong style="color:#1d4ed8">${escapeHtml(haceTxt)}</strong></td>
+      <td data-label="Base">${escapeHtml(baseTxt)}</td>
+      <td data-label="Interno"><strong style="color:#065f46">${escapeHtml(internoTxt)}</strong></td>
+      <td data-label="Usuario">${escapeHtml(usuarioTxt)}</td>
+      <td data-label="Pasajeros">${escapeHtml(pasajerosTxt)}</td>
+      <td data-label="Observaciones">${escapeHtml(observacionesTxt)}</td>
+      <td data-label="Itinerario llegada">${itinLlegadaHtml}</td>
+      <td data-label="Itinerario despacho"><strong>${escapeHtml(itinDespachoTxt)}</strong></td>
+      <td data-label="Motivo no despacho">${escapeHtml(reasonTxt)}</td>
+      <td data-label="Accion">${dispatchBtn}</td>
     </tr>`;
   }).join("");
 }
@@ -8296,6 +8296,8 @@ function bindWindowEvents(){
 
   window.addEventListener("resize", adjustDynamicTableViewport);
 }
+
+
 
 
 

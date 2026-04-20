@@ -2217,6 +2217,8 @@ let planillaAfiliadosRows = [];
 let planillaAfiliadosLoading = false;
 let planillaAfiliadosLoadedOnce = false;
 let planillaLastLoadedAt = 0;
+let planillaLastDeltaUpdatedAt = "";
+let planillaDeltaCycles = 0;
 let planillaRowsRevision = 0;
 let planillaDispatchResolutionCache = {
   rowsRef: null,
@@ -2238,8 +2240,11 @@ let outOfListVehicleKeySet = new Set();
 let operativoViewMode = "operativo";
 const ARRIVALS_PANEL_TAB_IDS = ["llegadas-aeropuerto", "llegadas-terminalnorte", "llegadas-san-diego", "llegadas-nutibara", "no-despacho", "fuera-lista", "conductores-csv", "planilla-afiliados"];
 const ARRIVALS_ONLY_APP = true;
-const PLANILLA_REFRESH_MAX_AGE_MS = 15000;
-const PLANILLA_AUTO_REFRESH_MS = 30000;
+const PLANILLA_REFRESH_MAX_AGE_MS = 60000;
+const PLANILLA_AUTO_REFRESH_MS = 60000;
+const PLANILLA_DELTA_SYNC_ENABLED = true;
+const PLANILLA_FULL_SYNC_EVERY_DELTA_CYCLES = 20;
+const PLANILLA_DELTA_LIMIT = 600;
 const TERMINAL_NORTE_ITINERARY = "Aeropuerto-autopista-terminalnorte";
 const NO_DESPACHO_THRESHOLD_MINUTES = 210; // 3 h 30 min
 const ARRIVAL_DEDUPE_WINDOW_MINUTES = 30; // Ventana para consolidar llegadas repetidas
@@ -2339,6 +2344,8 @@ const auditUserFilter = document.getElementById("auditUserFilter");
 const auditTableFilter = document.getElementById("auditTableFilter");
 const auditOpFilter = document.getElementById("auditOpFilter");
 const btnRefreshAudit = document.getElementById("btnRefreshAudit");
+const mobileTabSwitcher = document.getElementById("mobileTabSwitcher");
+const mobileTabSelect = document.getElementById("mobileTabSelect");
 let auditLogRows = [];
 const AUDIT_DISABLED = true;
 const planillaFilterInterno = document.getElementById("planillaFilterInterno");
@@ -2585,6 +2592,7 @@ function applyRoleRestrictions(){
     }
     if (baseSelectorRow) baseSelectorRow.classList.add("hidden");
     if (operativoTitle) operativoTitle.textContent = "Panel de llegadas vehiculos";
+    refreshMobileTabSwitcher();
     return;
   }
 
@@ -2615,6 +2623,7 @@ function applyRoleRestrictions(){
       enterBase(currentUserBase);
     }
     updateExportAccess();
+    refreshMobileTabSwitcher();
     return;
   }
 
@@ -2637,6 +2646,7 @@ function applyRoleRestrictions(){
   if (operativoTitle) operativoTitle.textContent = operativoViewMode === "llegadas" ? "Panel de llegadas vehiculos" : "Panel de operacion";
   updateExportAccess();
   renderAdminComplianceDashboard();
+  refreshMobileTabSwitcher();
 }
 
 async function renderSupabaseDebug(){
@@ -2817,15 +2827,21 @@ function getPlanillaSelectColumnsForCurrentTable(){
   return "*";
 }
 
-async function fetchPlanillaOptionalColumn(columnName){
+async function fetchPlanillaOptionalColumn(columnName, rowIds){
   const col = String(columnName || "").trim();
   if (!col) return null;
   try {
-    const { data, error } = await planillaSupabaseClient
+    let query = planillaSupabaseClient
       .from(currentPlanillaTableName)
       .select(`id,${col}`)
-      .order("hora_llegada", { ascending: false, nullsFirst: false })
-      .limit(2000);
+      .limit(PLANILLA_DELTA_LIMIT);
+    const ids = Array.isArray(rowIds) ? rowIds.map(v => String(v || "").trim()).filter(Boolean) : [];
+    if (ids.length > 0) {
+      query = query.in("id", ids);
+    } else {
+      query = query.order("hora_llegada", { ascending: false, nullsFirst: false });
+    }
+    const { data, error } = await query;
     if (error) return null;
     return Array.isArray(data) ? data : [];
   } catch (e) {
@@ -2833,7 +2849,7 @@ async function fetchPlanillaOptionalColumn(columnName){
   }
 }
 
-async function enrichPlanillaRowsWithOptionalColumns(rowsInput){
+async function enrichPlanillaRowsWithOptionalColumns(rowsInput, rowIds){
   const rows = Array.isArray(rowsInput) ? rowsInput : [];
   if (!rows.length) return rows;
   const byId = new Map();
@@ -2841,8 +2857,9 @@ async function enrichPlanillaRowsWithOptionalColumns(rowsInput){
     const id = row?.id;
     if (id !== undefined && id !== null) byId.set(String(id), row);
   });
+  const ids = Array.isArray(rowIds) ? rowIds : [];
   for (const col of PLANILLA_OPTIONAL_REG_ID_COLUMNS) {
-    const data = await fetchPlanillaOptionalColumn(col);
+    const data = await fetchPlanillaOptionalColumn(col, ids);
     if (!Array.isArray(data) || !data.length) continue;
     data.forEach(item => {
       const id = item?.id;
@@ -2855,6 +2872,55 @@ async function enrichPlanillaRowsWithOptionalColumns(rowsInput){
     });
   }
   return rows;
+}
+
+function getPlanillaRowUpdatedAtValue(row){
+  return String(row?.updated_at || row?.created_at || "").trim();
+}
+
+function getMaxPlanillaUpdatedAt(rowsInput, fallbackValue = ""){
+  const rows = Array.isArray(rowsInput) ? rowsInput : [];
+  let maxValue = String(fallbackValue || "").trim();
+  rows.forEach(row => {
+    const value = getPlanillaRowUpdatedAtValue(row);
+    if (!value) return;
+    if (!maxValue || value > maxValue) maxValue = value;
+  });
+  return maxValue;
+}
+
+function mergePlanillaRowsById(baseRowsInput, deltaRowsInput){
+  const baseRows = Array.isArray(baseRowsInput) ? baseRowsInput : [];
+  const deltaRows = Array.isArray(deltaRowsInput) ? deltaRowsInput : [];
+  if (!deltaRows.length) return baseRows.slice();
+  const merged = baseRows.slice();
+  const indexById = new Map();
+  const indexByCruceKey = new Map();
+  merged.forEach((row, idx) => {
+    const id = row?.id;
+    const cruce = String(row?.cruce_key || "").trim();
+    if (id !== undefined && id !== null) indexById.set(String(id), idx);
+    if (cruce) indexByCruceKey.set(cruce, idx);
+  });
+  deltaRows.forEach(delta => {
+    const id = delta?.id;
+    const cruce = String(delta?.cruce_key || "").trim();
+    let idx = -1;
+    if (id !== undefined && id !== null && indexById.has(String(id))) {
+      idx = indexById.get(String(id));
+    } else if (cruce && indexByCruceKey.has(cruce)) {
+      idx = indexByCruceKey.get(cruce);
+    }
+    if (idx >= 0) {
+      merged[idx] = delta;
+      return;
+    }
+    merged.push(delta);
+    const newIndex = merged.length - 1;
+    if (id !== undefined && id !== null) indexById.set(String(id), newIndex);
+    if (cruce) indexByCruceKey.set(cruce, newIndex);
+  });
+  return merged;
 }
 
 function formatPlanillaHeaderLabel(key){
@@ -3835,17 +3901,31 @@ async function persistCancelOnPlanillaRow(row, payload){
 }
 
 async function persistPassengersAndObservacionesOnPlanillaRow(row, payload){
-  const rowId = row?.id;
-  if (!rowId) return;
+  let rowId = row?.id;
+  if (!rowId) {
+    const targetKey = String(row?.cruce_key || "").trim();
+    if (targetKey) {
+      const match = (Array.isArray(planillaAfiliadosRows) ? planillaAfiliadosRows : [])
+        .find(item => String(item?.cruce_key || "").trim() === targetKey && !!item?.id);
+      if (match?.id) rowId = match.id;
+    }
+  }
+  if (!rowId) {
+    throw new Error("No se pudo identificar el id de la fila para actualizar.");
+  }
   const patch = {
     pasajeros: payload?.pasajeros ?? row?.pasajeros ?? null,
     observaciones: payload?.observaciones ?? row?.observaciones ?? ""
   };
-  const { error } = await planillaSupabaseClient
+  const { data, error } = await planillaSupabaseClient
     .from(currentPlanillaTableName)
     .update(patch)
-    .eq("id", rowId);
+    .eq("id", rowId)
+    .select("id, pasajeros, observaciones")
+    .single();
   if (error) throw error;
+  if (!data) throw new Error("Supabase no devolvio la fila actualizada.");
+  return data;
 }
 
 async function sendDispatchToSonar(payload){
@@ -4292,9 +4372,9 @@ async function handleEditPlanillaRow(rowUiId){
     return;
   }
   try {
-    await persistPassengersAndObservacionesOnPlanillaRow(row, { pasajeros, observaciones });
-    row.pasajeros = pasajerosRaw === "" ? "" : String(pasajeros);
-    row.observaciones = observaciones;
+    const updated = await persistPassengersAndObservacionesOnPlanillaRow(row, { pasajeros, observaciones });
+    row.pasajeros = updated?.pasajeros == null ? "" : String(updated.pasajeros);
+    row.observaciones = String(updated?.observaciones ?? "");
     showToast("Pasajeros y observaciones actualizados.", "ok");
   } catch (error) {
     showToast(`No se pudo actualizar en Supabase: ${error?.message || "sin detalle"}`, "err");
@@ -4821,6 +4901,42 @@ function getActiveTabId(){
   return document.querySelector(".tab.active")?.getAttribute("data-tab") || "";
 }
 
+function refreshMobileTabSwitcher(){
+  if (!mobileTabSelect) return;
+  const visibleTabs = Array.from(document.querySelectorAll(".tab[data-tab]"))
+    .filter(tab => !tab.classList.contains("hidden"));
+  const currentValue = String(mobileTabSelect.value || "");
+  const activeId = getActiveTabId();
+  mobileTabSelect.innerHTML = "";
+  visibleTabs.forEach(tab => {
+    const tabId = String(tab.getAttribute("data-tab") || "");
+    if (!tabId) return;
+    const option = document.createElement("option");
+    option.value = tabId;
+    option.textContent = String(tab.textContent || tabId).trim();
+    mobileTabSelect.appendChild(option);
+  });
+  const preferred = visibleTabs.some(tab => String(tab.getAttribute("data-tab") || "") === activeId)
+    ? activeId
+    : currentValue;
+  if (preferred && Array.from(mobileTabSelect.options).some(op => op.value === preferred)) {
+    mobileTabSelect.value = preferred;
+  } else if (mobileTabSelect.options.length > 0) {
+    mobileTabSelect.value = mobileTabSelect.options[0].value;
+  }
+  mobileTabSelect.disabled = mobileTabSelect.options.length === 0;
+  if (mobileTabSwitcher) mobileTabSwitcher.classList.toggle("hidden", mobileTabSelect.options.length === 0);
+}
+
+function openTabById(tabId){
+  const id = String(tabId || "").trim();
+  if (!id) return;
+  const target = Array.from(document.querySelectorAll(".tab[data-tab]"))
+    .find(tab => String(tab.getAttribute("data-tab") || "") === id && !tab.classList.contains("hidden"));
+  if (!target) return;
+  target.click();
+}
+
 function isPlanillaRelatedTab(tabId){
   const id = String(tabId || "");
   return id === "planilla-afiliados"
@@ -4840,6 +4956,8 @@ function resetPlanillaCache(){
   invalidatePlanillaDispatchResolutionCache();
   planillaAfiliadosLoadedOnce = false;
   planillaLastLoadedAt = 0;
+  planillaLastDeltaUpdatedAt = "";
+  planillaDeltaCycles = 0;
 }
 
 function setCurrentPlanillaTableSource(nextTable){
@@ -4860,10 +4978,11 @@ function loadPlanillaTableSourcePreference(){
 
 async function ensureFreshPlanillaData(options = {}){
   const force = !!options.force;
+  const forceFull = !!options.forceFull;
   const maxAgeMs = Number(options.maxAgeMs || PLANILLA_REFRESH_MAX_AGE_MS);
   const stale = !planillaAfiliadosLoadedOnce || !planillaLastLoadedAt || ((Date.now() - planillaLastLoadedAt) > maxAgeMs);
   if (force || stale) {
-    await loadPlanillaAfiliadosFromSupabase();
+    await loadPlanillaAfiliadosFromSupabase({ forceFull });
     return;
   }
   renderPlanillaAfiliados();
@@ -4875,9 +4994,10 @@ async function ensureFreshPlanillaData(options = {}){
   renderFueraListaTab();
 }
 
-async function loadPlanillaAfiliadosFromSupabase(){
+async function loadPlanillaAfiliadosFromSupabase(options = {}){
   if (planillaAfiliadosLoading) return;
   if (!currentUserId) return;
+  const forceFull = !!options.forceFull;
   currentPlanillaTableName = PLANILLA_TABLE_NAME;
   if (planillaTableSource) planillaTableSource.value = PLANILLA_TABLE_NAME;
   planillaAfiliadosLoading = true;
@@ -4886,14 +5006,51 @@ async function loadPlanillaAfiliadosFromSupabase(){
   if (noDespachoStatus) noDespachoStatus.textContent = "Consultando...";
   try {
     const selectColumns = getPlanillaSelectColumnsForCurrentTable();
-    const { data, error } = await planillaSupabaseClient
-      .from(currentPlanillaTableName)
-      .select(selectColumns)
-      .order("hora_llegada", { ascending: false, nullsFirst: false })
-      .limit(2000);
-    if (error) throw error;
-    planillaAfiliadosRows = Array.isArray(data) ? data : [];
-    await enrichPlanillaRowsWithOptionalColumns(planillaAfiliadosRows);
+    const canUseDelta = PLANILLA_DELTA_SYNC_ENABLED
+      && planillaAfiliadosLoadedOnce
+      && !!planillaLastDeltaUpdatedAt
+      && !forceFull
+      && planillaDeltaCycles < PLANILLA_FULL_SYNC_EVERY_DELTA_CYCLES;
+    let fetchedRows = [];
+    let modeLabel = "full";
+
+    if (canUseDelta) {
+      modeLabel = "delta";
+      const { data, error } = await planillaSupabaseClient
+        .from(currentPlanillaTableName)
+        .select(selectColumns)
+        .gt("updated_at", planillaLastDeltaUpdatedAt)
+        .order("updated_at", { ascending: true })
+        .limit(PLANILLA_DELTA_LIMIT);
+      if (error) {
+        console.warn("Delta sync fallo, se usa full sync:", error);
+        modeLabel = "full";
+      } else {
+        fetchedRows = Array.isArray(data) ? data : [];
+      }
+    }
+
+    if (modeLabel === "full") {
+      const { data, error } = await planillaSupabaseClient
+        .from(currentPlanillaTableName)
+        .select(selectColumns)
+        .order("hora_llegada", { ascending: false, nullsFirst: false })
+        .limit(PLANILLA_DELTA_LIMIT);
+      if (error) throw error;
+      fetchedRows = Array.isArray(data) ? data : [];
+      planillaAfiliadosRows = fetchedRows;
+      await enrichPlanillaRowsWithOptionalColumns(planillaAfiliadosRows);
+      planillaDeltaCycles = 0;
+    } else {
+      if (fetchedRows.length > 0) {
+        const deltaIds = fetchedRows.map(row => row?.id).filter(v => v !== undefined && v !== null);
+        planillaAfiliadosRows = mergePlanillaRowsById(planillaAfiliadosRows, fetchedRows);
+        await enrichPlanillaRowsWithOptionalColumns(planillaAfiliadosRows, deltaIds);
+      }
+      planillaDeltaCycles += 1;
+    }
+
+    planillaLastDeltaUpdatedAt = getMaxPlanillaUpdatedAt(planillaAfiliadosRows, planillaLastDeltaUpdatedAt);
     invalidatePlanillaDispatchResolutionCache();
     planillaAfiliadosLoadedOnce = true;
     planillaLastLoadedAt = Date.now();
@@ -4906,7 +5063,8 @@ async function loadPlanillaAfiliadosFromSupabase(){
     renderFueraListaTab();
     if (planillaStatus) {
       const stamp = new Date().toLocaleString("es-CO");
-      planillaStatus.textContent = `Actualizado: ${stamp} | Tabla: ${currentPlanillaTableName}`;
+      const syncTxt = modeLabel === "delta" ? "delta" : "full";
+      planillaStatus.textContent = `Actualizado: ${stamp} | Tabla: ${currentPlanillaTableName} | Sync: ${syncTxt}`;
     }
     if (llegadasAeropuertoStatus) {
       const stamp2 = new Date().toLocaleString("es-CO");
@@ -7350,6 +7508,7 @@ document.querySelectorAll('.tab').forEach(tab => {
       loadAuditLogFromSupabase();
     }
     adjustDynamicTableViewport();
+    refreshMobileTabSwitcher();
   });
 });
 
@@ -7584,6 +7743,7 @@ function setOperativoViewMode(mode){
   if (operativoTitle && !isBaseOperator()) {
     operativoTitle.textContent = operativoViewMode === "llegadas" ? "Panel de llegadas vehiculos" : "Panel de operacion";
   }
+  refreshMobileTabSwitcher();
 }
 
 function showAdminPanel(){
@@ -7758,6 +7918,7 @@ function handleClearFilterClick(){
 }
 
 function bindUIEvents(){
+  const triggerPlanillaRefresh = () => loadPlanillaAfiliadosFromSupabase();
   const btnGoAdmin = document.getElementById("btnGoAdmin");
   if (btnGoAdmin) {
     btnGoAdmin.addEventListener("click", showAdminPanel);
@@ -8119,7 +8280,7 @@ function bindUIEvents(){
   }
 
   if (btnRefreshPlanilla) {
-    btnRefreshPlanilla.addEventListener("click", loadPlanillaAfiliadosFromSupabase);
+    btnRefreshPlanilla.addEventListener("click", triggerPlanillaRefresh);
   }
   if (planillaTableSource) {
     planillaTableSource.addEventListener("change", async () => {
@@ -8135,7 +8296,7 @@ function bindUIEvents(){
     btnDownloadDespachos.addEventListener("click", handleDownloadDespachos);
   }
   if (btnRefreshLlegadasAeropuerto) {
-    btnRefreshLlegadasAeropuerto.addEventListener("click", loadPlanillaAfiliadosFromSupabase);
+    btnRefreshLlegadasAeropuerto.addEventListener("click", triggerPlanillaRefresh);
   }
   if (aeropuertoSearch) aeropuertoSearch.addEventListener("input", renderLlegadasAeropuerto);
   if (aeropuertoEstadoFilter) aeropuertoEstadoFilter.addEventListener("change", renderLlegadasAeropuerto);
@@ -8146,7 +8307,7 @@ function bindUIEvents(){
     btnDownloadLlegadasAeropuerto.addEventListener("click", handleDownloadLlegadasAeropuerto);
   }
   if (btnRefreshLlegadasTerminalNorte) {
-    btnRefreshLlegadasTerminalNorte.addEventListener("click", loadPlanillaAfiliadosFromSupabase);
+    btnRefreshLlegadasTerminalNorte.addEventListener("click", triggerPlanillaRefresh);
   }
   if (terminalNorteSearch) terminalNorteSearch.addEventListener("input", renderLlegadasTerminalNorte);
   if (terminalNorteEstadoFilter) terminalNorteEstadoFilter.addEventListener("change", renderLlegadasTerminalNorte);
@@ -8157,7 +8318,7 @@ function bindUIEvents(){
     btnDownloadLlegadasTerminalNorte.addEventListener("click", handleDownloadLlegadasTerminalNorte);
   }
   if (btnRefreshLlegadasSanDiego) {
-    btnRefreshLlegadasSanDiego.addEventListener("click", loadPlanillaAfiliadosFromSupabase);
+    btnRefreshLlegadasSanDiego.addEventListener("click", triggerPlanillaRefresh);
   }
   if (sanDiegoSearch) sanDiegoSearch.addEventListener("input", renderLlegadasSanDiego);
   if (sanDiegoEstadoFilter) sanDiegoEstadoFilter.addEventListener("change", renderLlegadasSanDiego);
@@ -8168,7 +8329,7 @@ function bindUIEvents(){
     btnDownloadLlegadasSanDiego.addEventListener("click", handleDownloadLlegadasSanDiego);
   }
   if (btnRefreshLlegadasNutibara) {
-    btnRefreshLlegadasNutibara.addEventListener("click", loadPlanillaAfiliadosFromSupabase);
+    btnRefreshLlegadasNutibara.addEventListener("click", triggerPlanillaRefresh);
   }
   if (nutibaraSearch) nutibaraSearch.addEventListener("input", renderLlegadasNutibara);
   if (nutibaraEstadoFilter) nutibaraEstadoFilter.addEventListener("change", renderLlegadasNutibara);
@@ -8179,7 +8340,7 @@ function bindUIEvents(){
     btnDownloadLlegadasNutibara.addEventListener("click", handleDownloadLlegadasNutibara);
   }
   if (btnRefreshNoDespacho) {
-    btnRefreshNoDespacho.addEventListener("click", loadPlanillaAfiliadosFromSupabase);
+    btnRefreshNoDespacho.addEventListener("click", triggerPlanillaRefresh);
   }
   if (noDespachoSearch) noDespachoSearch.addEventListener("input", renderNoDespachoTab);
   if (noDespachoPuntoFilter) noDespachoPuntoFilter.addEventListener("change", renderNoDespachoTab);
@@ -8191,6 +8352,11 @@ function bindUIEvents(){
   if (planillaFilterBase) planillaFilterBase.addEventListener("input", renderPlanillaAfiliados);
   if (planillaFilterHoraLlegada) planillaFilterHoraLlegada.addEventListener("input", renderPlanillaAfiliados);
   if (planillaFilterTipo) planillaFilterTipo.addEventListener("change", renderPlanillaAfiliados);
+  if (mobileTabSelect) {
+    mobileTabSelect.addEventListener("change", () => {
+      openTabById(mobileTabSelect.value);
+    });
+  }
 }
 
 // ==================== INIT ====================
@@ -8230,6 +8396,7 @@ async function initializeApp(){
   renderNovedades();
   renderConsultaBaseView();
   renderFueraListaTab();
+  refreshMobileTabSwitcher();
 }
 
 function bindWindowEvents(){
@@ -8305,6 +8472,10 @@ function bindWindowEvents(){
 
   window.addEventListener("resize", adjustDynamicTableViewport);
 }
+
+
+
+
 
 
 

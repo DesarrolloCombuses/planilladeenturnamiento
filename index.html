@@ -153,7 +153,7 @@
           <div class="tab" data-tab="planilla-afiliados">Tabla planilla</div>
           <div class="tab" data-tab="llegadas-aeropuerto">Llegadas Aeropuerto 2</div>
           <div class="tab" data-tab="llegadas-terminalnorte">Llegadas Terminalnorte 2</div>
-          <div class="tab" data-tab="llegadas-san-diego">Llegadas San Diego 2</div>
+          <div class="tab" data-tab="llegadas-san-diego">Llegadas Almacentro</div>
           <div class="tab" data-tab="llegadas-nutibara">Llegadas Nutibara 2</div>
           <div class="tab" data-tab="no-despacho">No tuvieron despacho</div>
           <div class="tab" data-tab="fuera-lista">Fuera de lista</div>
@@ -222,7 +222,7 @@
             <select id="planillaFilterTipo">
               <option value="">Todos los tipos</option>
               <option value="Llegada Aeropuerto">Llegada Aeropuerto</option>
-              <option value="Llegada San Diego">Llegada San Diego</option>
+              <option value="Llegada San Diego">Llegada Almacentro</option>
               <option value="Llegada Nutibara">Llegada Nutibara</option>
             </select>
             <input id="planillaFilterHoraLlegada" type="text" placeholder="Filtrar hora llegada..." />
@@ -343,10 +343,10 @@
           </div>
         </div>
 
-        <!-- Contenido Llegadas San Diego -->
+        <!-- Contenido Llegadas Almacentro -->
         <div id="tab-llegadas-san-diego" class="tab-content">
           <div class="row mobile-filters" style="margin-bottom:10px">
-            <h3 id="llegadasSanDiegoTitle" style="margin:0">Ultimas Llegadas San Diego 2 (101)</h3>
+            <h3 id="llegadasSanDiegoTitle" style="margin:0">Ultimas Llegadas Almacentro (101)</h3>
             <button class="btn btn-ghost" id="btnRefreshLlegadasSanDiego">Actualizar</button>
             <input id="sanDiegoSearch" type="text" placeholder="Buscar en todos los campos..." />
             <select id="sanDiegoEstadoFilter">
@@ -361,7 +361,7 @@
             <input id="sanDiegoUploadFrom" type="date" />
             <label class="consulta-mini" for="sanDiegoUploadTo">hasta</label>
             <input id="sanDiegoUploadTo" type="date" />
-            <button class="btn btn-success" id="btnDownloadLlegadasSanDiego">Descargar San Diego</button>
+            <button class="btn btn-success" id="btnDownloadLlegadasSanDiego">Descargar Almacentro</button>
             <span class="muted">Registros: <strong id="llegadasSanDiegoCount">0</strong></span>
             <span class="muted" id="llegadasSanDiegoStatus">Sin cargar</span>
           </div>
@@ -373,7 +373,7 @@
             <table id="llegadasSanDiegoTable">
               <thead>
                 <tr>
-                  <th>Hora ultima llegada San Diego</th>
+                  <th>Hora ultima llegada Almacentro</th>
                   <th>Despacho</th>
                   <th>Estado</th>
                   <th>Hace</th>
@@ -455,7 +455,7 @@
               <option value="">Todos los puntos</option>
               <option value="aeropuerto">Aeropuerto 2</option>
               <option value="terminalnorte">Terminalnorte 2</option>
-              <option value="sandiego">San Diego 2</option>
+              <option value="sandiego">Almacentro</option>
               <option value="nutibara">Nutibara 2</option>
             </select>
             <select id="noDespachoBaseFilter">
@@ -875,6 +875,19 @@
 <script src="js/main.js"></script>
 </body>
 </html>
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

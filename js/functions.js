@@ -54,6 +54,7 @@ if (!window.supabase || typeof window.supabase.createClient !== "function") {
 }
 const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 const planillaSupabaseClient = window.supabase.createClient(PLANILLA_SUPABASE_URL, PLANILLA_SUPABASE_ANON_KEY);
+const authSupabaseClient = planillaSupabaseClient;
 const authPanel = document.getElementById("authPanel");
 const appWrap = document.getElementById("appWrap");
 const authEmail = document.getElementById("authEmail");
@@ -1207,7 +1208,7 @@ btnSignIn.onclick = async () => {
     return;
   }
   setAuthStatus("Validando acceso...", "warn");
-  const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
+  const { error } = await authSupabaseClient.auth.signInWithPassword({ email, password });
   if(error){
     setAuthStatus(error.message, "err");
     return;
@@ -1227,7 +1228,7 @@ btnSignUp.onclick = async () => {
     return;
   }
   setAuthStatus("Creando cuenta...", "warn");
-  const { error } = await supabaseClient.auth.signUp({ email, password });
+  const { error } = await authSupabaseClient.auth.signUp({ email, password });
   if(error){
     setAuthStatus(error.message, "err");
     return;
@@ -1242,21 +1243,21 @@ if (btnSignUp && !ALLOW_PUBLIC_SIGNUP) {
 }
 
 btnLogout.onclick = async () => {
-  const { error } = await supabaseClient.auth.signOut();
+  const { error } = await authSupabaseClient.auth.signOut();
   if(error){
     setAuthStatus(error.message, "err");
   }
 };
 
 async function initAuth(){
-  const { data, error } = await supabaseClient.auth.getSession();
+  const { data, error } = await authSupabaseClient.auth.getSession();
   if(error){
     setAuthStatus(error.message, "err");
     applyAuthState(null);
   }else{
     applyAuthState(data.session);
   }
-  supabaseClient.auth.onAuthStateChange((_event, session) => {
+  authSupabaseClient.auth.onAuthStateChange((_event, session) => {
     applyAuthState(session);
   });
 }
@@ -4476,7 +4477,7 @@ function getNoDespachoPointLabel(row){
   const key = getNoDespachoPointKey(row);
   if (key === "aeropuerto") return "Aeropuerto 2";
   if (key === "terminalnorte") return "Terminalnorte 2";
-  if (key === "sandiego") return "San Diego 2";
+  if (key === "sandiego") return "Almacentro";
   if (key === "nutibara") return "Nutibara 2";
   return "Otro";
 }
@@ -4722,10 +4723,10 @@ function renderLlegadasSanDiego(){
   const visibleRows = rowsByRule.activeRows;
   lastSanDiegoRenderedRows = visibleRows.slice();
   if (llegadasSanDiegoCount) llegadasSanDiegoCount.textContent = String(visibleRows.length);
-  if (llegadasSanDiegoTitle) llegadasSanDiegoTitle.textContent = "Ultimas Llegadas San Diego 2 (101)";
+  if (llegadasSanDiegoTitle) llegadasSanDiegoTitle.textContent = "Ultimas Llegadas Almacentro (101)";
   if (visibleRows.length === 0) {
     if (llegadasSanDiegoTabs) llegadasSanDiegoTabs.innerHTML = "";
-    llegadasSanDiegoBody.innerHTML = `<tr><td colspan="12" class="muted" style="text-align:center;padding:12px">Sin llegadas de San Diego.</td></tr>`;
+    llegadasSanDiegoBody.innerHTML = `<tr><td colspan="12" class="muted" style="text-align:center;padding:12px">Sin llegadas de Almacentro.</td></tr>`;
     return;
   }
 
@@ -8472,6 +8473,21 @@ function bindWindowEvents(){
 
   window.addEventListener("resize", adjustDynamicTableViewport);
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

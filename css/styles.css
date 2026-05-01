@@ -1,5 +1,7 @@
-  body{font-family:'Segoe UI',Roboto,sans-serif;background:#f7f8fa;color:#222;margin:0;padding:0}
-  .wrap{max-width:1500px;margin:auto;padding:16px}
+  *{box-sizing:border-box}
+  html{width:100%;overflow-x:hidden}
+  body{font-family:'Segoe UI',Roboto,sans-serif;background:#f7f8fa;color:#222;margin:0;padding:0;min-width:0}
+  .wrap{width:min(100%, 1800px);max-width:none;margin:auto;padding:16px}
 
   .topbar{
     display:flex;justify-content:space-between;align-items:center;
@@ -19,7 +21,7 @@
     color:#0b4aa2;font-size:12px;font-weight:800
   }
 
-  .card{background:#fff;border:1px solid #e5e7eb;border-radius:14px;padding:14px;box-shadow:0 10px 30px rgba(0,0,0,.06)}
+  .card{background:#fff;border:1px solid #e5e7eb;border-radius:14px;padding:14px;box-shadow:0 10px 30px rgba(0,0,0,.06);min-width:0}
   .grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
   .hidden{display:none !important;}
 
@@ -27,16 +29,16 @@
   input[type=file]{display:none}
 
   /* Operativo layout */
-  .layout{display:grid;grid-template-columns:1fr 360px;gap:14px}
+  .layout{display:grid;grid-template-columns:minmax(0, 1fr) clamp(280px, 22vw, 360px);gap:14px;min-width:0}
   
   /* Pestanas */
   .tabs {
-    display:flex;gap:4px;border-bottom:2px solid #e5e7eb;margin-bottom:14px;
+    display:flex;gap:4px;border-bottom:2px solid #e5e7eb;margin-bottom:14px;flex-wrap:wrap;
   }
   .tab {
-    padding:10px 20px;cursor:pointer;border-radius:8px 8px 0 0;
+    padding:10px 14px;cursor:pointer;border-radius:8px 8px 0 0;
     background:#f3f4f6;border:1px solid #e5e7eb;border-bottom:none;
-    font-weight:600;color:#6b7280;transition:all 0.2s;
+    font-weight:600;color:#6b7280;transition:all 0.2s;white-space:normal;line-height:1.15;
   }
   .tab.active {
     background:#0078d4;color:#fff;border-color:#0078d4;
@@ -366,9 +368,12 @@
       radial-gradient(900px 400px at 115% -10%, #e0f2fe 0%, transparent 50%),
       var(--ui-bg);
   }
-  .wrap{max-width:1520px;padding:18px}
+  .wrap{width:min(100%, 1800px);max-width:none;padding:18px}
   .card{border-color:var(--ui-line);border-radius:16px;box-shadow:var(--ui-shadow)}
-  .layout{align-items:stretch}
+  .layout{align-items:stretch;grid-template-columns:minmax(0, 1fr) clamp(280px, 22vw, 360px)}
+  .layout:has(> .drivers.hidden){grid-template-columns:minmax(0, 1fr)}
+  #operativoPanel{overflow:hidden}
+  #operativoInner > .card{min-width:0;overflow:hidden}
 
   .btn{
     border-radius:10px;padding:9px 14px;
@@ -382,10 +387,17 @@
 
   .tabs{
     position:sticky;top:0;z-index:4;background:#fff;padding-bottom:8px;
-    border-bottom-color:#e2e8f0;gap:6px;
+    border-bottom-color:#e2e8f0;gap:6px;align-items:flex-end;
   }
   .tab{
     background:#f8fafc;border-color:#e2e8f0;color:#475569;font-weight:700;
+    flex:0 1 auto;
+    max-width:170px;
+    min-height:38px;
+    display:inline-flex;
+    align-items:center;
+    padding:8px 12px;
+    font-size:13px;
   }
   .tab.active{
     background:linear-gradient(135deg,var(--ui-primary),var(--ui-primary-2));
@@ -400,6 +412,57 @@
   tr:nth-child(even){background:#fbfdff}
   tbody tr:hover td{background:#f1f5f9}
   #grid, #novedadesGrid{border-radius:10px;overflow:hidden}
+
+  .topbar .row{min-width:0}
+  .topbar .row:first-child{flex:1 1 360px}
+  .topbar .row:last-child{justify-content:flex-end;flex:1 1 520px}
+  .topbar .pill{max-width:100%;white-space:normal}
+  .tab-content{min-width:0}
+  .tab-content > div[style*="overflow:auto"],
+  .planilla-wrap,
+  #liveExcelPreview,
+  #gridViewport,
+  #novedadesViewport{
+    max-width:100%;
+  }
+  #gridViewport,
+  #novedadesViewport{
+    overflow:auto !important;
+  }
+  #grid,
+  #planillaTable,
+  #llegadasAeropuertoTable,
+  #llegadasTerminalNorteTable,
+  #llegadasSanDiegoTable,
+  #llegadasNutibaraTable,
+  #noDespachoTable,
+  #fueraListaTable,
+  #conductoresCsvTable{
+    min-width:max-content;
+  }
+  .planilla-toolbar,
+  .mobile-filters{
+    align-items:flex-end;
+  }
+  .planilla-toolbar input,
+  .planilla-toolbar select,
+  .mobile-filters input,
+  .mobile-filters select{
+    min-width:150px;
+    max-width:260px;
+  }
+  .mobile-filters h3{
+    flex:1 1 260px;
+    min-width:220px;
+    line-height:1.2;
+  }
+
+  @media (min-width: 1500px){
+    .wrap{padding:22px 28px}
+    .tab{max-width:none;font-size:14px}
+    .layout{grid-template-columns:minmax(0, 1fr) 340px}
+    .layout:has(> .drivers.hidden){grid-template-columns:minmax(0, 1fr)}
+  }
 
   .drivers .list{
     border-color:var(--ui-line);border-radius:12px;
@@ -491,6 +554,7 @@
       border-collapse:separate;
       border-spacing:0 10px;
       width:100%;
+      min-width:0;
       table-layout:fixed;
     }
 
@@ -573,6 +637,18 @@
   @media (min-width: 861px){
     .btn-mobile-more{display:none !important}
   }
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

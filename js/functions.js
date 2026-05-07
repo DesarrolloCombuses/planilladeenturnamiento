@@ -20,6 +20,7 @@ const SONAR_ITINERARIES = [
   { id: "4505", grupo: "SANDIEGO", nombre: "Almacentro-Tunel-Aeropuerto" }
 ];
 const PLANILLA_TABLE_NAME = "planilla_afiliados_2";
+const VEHICULOS_SONAR_TABLE_NAME = "vehiculossonar";
 const PLANILLA_TABLE_SOURCE_STORAGE_KEY = "planilla_table_source";
 const PLANILLA_AFILIADOS_2_COLUMNS = [
   "id",
@@ -146,6 +147,12 @@ let cancelDispatchModalResolver = null;
 let removeFromListModalResolver = null;
 let editPlanillaModalResolver = null;
 let manualDispatchModalResolver = null;
+let vehiculosSonarRows = [];
+let vehiculosSonarLoading = false;
+let vehiculosSonarLoadedOnce = false;
+let vehiculosSonarLastLoadedAt = 0;
+let manualDispatchVehicleLookupSeq = 0;
+const VEHICULOS_SONAR_REFRESH_MAX_AGE_MS = 5 * 60 * 1000;
 const ROW_UI_ID_KEY = "__ROW_UI_ID";
 let rowUiIdSeq = 1;
 const UNASSIGNED_LABEL = "SIN CONDUCTOR PROGRAMADO";
@@ -846,7 +853,198 @@ function closeManualDispatchModal(confirmed){
   }
 }
 
+function normalizeVehiculoSonarRow(row){
+  const source = row || {};
+  const interno = String(source.INTERNO ?? source.interno ?? source.Interno ?? "").trim();
+  const placa = String(source.Placa ?? source.PLACA ?? source.placa ?? "").trim();
+  const mid = String(source.ID ?? source.id ?? source.Id ?? source.mid ?? source.MID ?? "").trim();
+  return {
+    ...source,
+    interno,
+    placa,
+    mid,
+    source: "vehiculossonar"
+  };
+}
+
+function getManualDispatchDefaultBase(){
+  return getBaseCanonical(currentBase || currentUserBase || "");
+}
+
+async function loadVehiculosSonarFromSupabase(options = {}){
+  if (vehiculosSonarLoading) return;
+  if (!currentUserId) return;
+  const force = !!options.force;
+  const stale = !vehiculosSonarLoadedOnce
+    || !vehiculosSonarLastLoadedAt
+    || ((Date.now() - vehiculosSonarLastLoadedAt) > VEHICULOS_SONAR_REFRESH_MAX_AGE_MS);
+  if (!force && !stale) return;
+  vehiculosSonarLoading = true;
+  if (vehiculosSonarStatus) vehiculosSonarStatus.textContent = "Consultando Supabase...";
+  try {
+    const { data, error } = await planillaSupabaseClient
+      .from(VEHICULOS_SONAR_TABLE_NAME)
+      .select("*")
+      .limit(5000);
+    if (error) throw error;
+    vehiculosSonarRows = (Array.isArray(data) ? data : [])
+      .map(normalizeVehiculoSonarRow)
+      .filter(row => row.interno && row.mid);
+    vehiculosSonarLoadedOnce = true;
+    vehiculosSonarLastLoadedAt = Date.now();
+    renderVehiculosSonarTab();
+    if (vehiculosSonarStatus) {
+      const stamp = new Date().toLocaleString("es-CO");
+      vehiculosSonarStatus.textContent = `Actualizado: ${stamp}`;
+    }
+  } catch (error) {
+    console.error(`Error cargando ${VEHICULOS_SONAR_TABLE_NAME}:`, error);
+    if (vehiculosSonarStatus) vehiculosSonarStatus.textContent = `Error: ${error?.message || "consulta fallida"}`;
+    showToast(`No se pudo cargar ${VEHICULOS_SONAR_TABLE_NAME}. Se usara la planilla cargada si esta disponible.`, "warn");
+  } finally {
+    vehiculosSonarLoading = false;
+  }
+}
+
+function mergeVehiculoSonarRows(rowsInput){
+  const incoming = (Array.isArray(rowsInput) ? rowsInput : [])
+    .map(normalizeVehiculoSonarRow)
+    .filter(row => row.interno && row.mid);
+  if (!incoming.length) return null;
+  const byInterno = new Map((Array.isArray(vehiculosSonarRows) ? vehiculosSonarRows : [])
+    .map(row => [String(row?.interno || "").trim(), row]));
+  incoming.forEach(row => byInterno.set(String(row.interno), row));
+  vehiculosSonarRows = Array.from(byInterno.values());
+  vehiculosSonarLoadedOnce = true;
+  vehiculosSonarLastLoadedAt = Date.now();
+  return incoming[0];
+}
+
+function getFilteredVehiculosSonarRows(){
+  const term = String(vehiculosSonarSearch?.value || "").trim().toLowerCase();
+  const rows = Array.isArray(vehiculosSonarRows) ? vehiculosSonarRows : [];
+  const filtered = term
+    ? rows.filter(row => {
+        const haystack = [
+          row?.interno,
+          row?.placa,
+          row?.mid
+        ].map(v => String(v || "").toLowerCase()).join(" ");
+        return haystack.includes(term);
+      })
+    : rows.slice();
+  return filtered.sort((a, b) => String(a.interno).localeCompare(String(b.interno), "es", { numeric: true }));
+}
+
+function renderVehiculosSonarTab(){
+  if (!vehiculosSonarBody) return;
+  const filtered = getFilteredVehiculosSonarRows();
+  if (vehiculosSonarCount) vehiculosSonarCount.textContent = String(filtered.length);
+  if (!filtered.length) {
+    vehiculosSonarBody.innerHTML = `<tr><td colspan="4" class="muted" style="text-align:center;padding:12px">Sin vehiculos para mostrar.</td></tr>`;
+    return;
+  }
+  vehiculosSonarBody.innerHTML = filtered.map(row => {
+    const interno = String(row?.interno || "").trim();
+    const placa = String(row?.placa || "").trim();
+    const mid = String(row?.mid || "").trim();
+    return `<tr>
+      <td>${escapeHtml(interno)}</td>
+      <td>${escapeHtml(placa || "-")}</td>
+      <td>
+        <input class="vehiculo-sonar-id-input" data-interno="${escapeHtml(interno)}" value="${escapeHtml(mid)}" placeholder="ID Sonar" />
+      </td>
+      <td>
+        <button class="btn btn-primary btn-save-vehiculo-sonar" data-interno="${escapeHtml(interno)}">Guardar</button>
+      </td>
+    </tr>`;
+  }).join("");
+}
+
+async function updateVehiculoSonarId(internoValue, nextIdValue){
+  const interno = String(internoValue || "").trim();
+  const nextId = String(nextIdValue || "").trim().toUpperCase();
+  if (!interno || !nextId) {
+    showToast("Escribe un interno y un ID Sonar valido.", "warn");
+    return;
+  }
+  const row = findManualDispatchVehicleByInterno(interno);
+  const previousId = String(row?.mid || "").trim();
+  if (previousId === nextId) {
+    showToast("El ID Sonar no cambio.", "warn");
+    return;
+  }
+  try {
+    const numericInterno = Number(interno);
+    let query = planillaSupabaseClient
+      .from(VEHICULOS_SONAR_TABLE_NAME)
+      .update({ ID: nextId });
+    query = Number.isFinite(numericInterno) && String(numericInterno) === interno
+      ? query.eq("INTERNO", numericInterno)
+      : query.eq("INTERNO", interno);
+    const { data, error } = await query.select("*");
+    if (error) throw error;
+    const updatedRow = mergeVehiculoSonarRows(data);
+    if (!updatedRow) throw new Error("No se encontro el vehiculo para actualizar.");
+    renderVehiculosSonarTab();
+    fillManualDispatchInternoList();
+    if (manualDispatchInterno && String(manualDispatchInterno.value || "").trim() === interno) {
+      applyManualDispatchVehicleRow(updatedRow);
+    }
+    showToast(`ID Sonar actualizado para interno ${interno}.`, "ok");
+  } catch (error) {
+    console.error(`Error actualizando ${VEHICULOS_SONAR_TABLE_NAME}:`, error);
+    showToast(`No se pudo actualizar el ID Sonar: ${error?.message || "fallo de Supabase"}`, "err");
+  }
+}
+
+function handleVehiculosSonarTableClick(ev){
+  const btn = ev.target?.closest?.(".btn-save-vehiculo-sonar");
+  if (!btn) return;
+  const interno = String(btn.getAttribute("data-interno") || "").trim();
+  const input = Array.from(vehiculosSonarBody?.querySelectorAll(".vehiculo-sonar-id-input") || [])
+    .find(el => String(el.getAttribute("data-interno") || "").trim() === interno);
+  updateVehiculoSonarId(interno, input?.value || "");
+}
+
+async function fetchVehiculoSonarByInterno(internoValue){
+  const interno = String(internoValue || "").trim();
+  if (!interno || !currentUserId) return null;
+  try {
+    const numericInterno = Number(interno);
+    let query = planillaSupabaseClient
+      .from(VEHICULOS_SONAR_TABLE_NAME)
+      .select("*")
+      .limit(5);
+    query = Number.isFinite(numericInterno) && String(numericInterno) === interno
+      ? query.eq("INTERNO", numericInterno)
+      : query.eq("INTERNO", interno);
+    const { data, error } = await query;
+    if (error) throw error;
+    return mergeVehiculoSonarRows(data);
+  } catch (error) {
+    console.error(`Error consultando ${VEHICULOS_SONAR_TABLE_NAME} por INTERNO:`, error);
+    return null;
+  }
+}
+
 function getManualDispatchVehicleRows(){
+  const sonarRows = Array.isArray(vehiculosSonarRows) ? vehiculosSonarRows : [];
+  if (sonarRows.length > 0) {
+    const seen = new Set();
+    const unique = [];
+    sonarRows
+      .slice()
+      .sort((a, b) => String(a.interno).localeCompare(String(b.interno), "es", { numeric: true }))
+      .forEach(row => {
+        const interno = String(row?.interno || "").trim();
+        if (!interno || seen.has(interno)) return;
+        seen.add(interno);
+        unique.push(row);
+      });
+    return unique;
+  }
+
   const rows = Array.isArray(planillaAfiliadosRows) ? planillaAfiliadosRows : [];
   const sorted = rows
     .filter(row => !!String(row?.interno || "").trim())
@@ -868,9 +1066,14 @@ function fillManualDispatchInternoList(){
   const rows = getManualDispatchVehicleRows();
   manualDispatchInternoList.innerHTML = rows.map(row => {
     const interno = String(row?.interno || "").trim();
-    const base = formatBaseLabel(getBaseCanonical(row?.base || "") || String(row?.base || "").trim());
+    const base = formatBaseLabel(getBaseCanonical(row?.base || "") || getManualDispatchDefaultBase());
     const mid = String(row?.mid || "").trim();
-    return `<option value="${escapeHtml(interno)}" label="${escapeHtml(`${base} | MID ${mid || "-"}`)}"></option>`;
+    const placa = String(row?.placa || row?.Placa || "").trim();
+    const labelParts = [];
+    if (placa) labelParts.push(`Placa ${placa}`);
+    if (base) labelParts.push(base);
+    labelParts.push(`MID ${mid || "-"}`);
+    return `<option value="${escapeHtml(interno)}" label="${escapeHtml(labelParts.join(" | "))}"></option>`;
   }).join("");
 }
 
@@ -906,8 +1109,7 @@ function applyManualDispatchConductorSelection(){
   manualDispatchDriverId.value = drvId || "";
 }
 
-function applyManualDispatchVehicleSelection(){
-  const row = findManualDispatchVehicleByInterno(manualDispatchInterno?.value || "");
+function applyManualDispatchVehicleRow(row){
   if (!row) {
     if (manualDispatchBase) manualDispatchBase.value = "";
     if (manualDispatchMid) manualDispatchMid.value = "";
@@ -915,7 +1117,7 @@ function applyManualDispatchVehicleSelection(){
     applyManualDispatchConductorSelection();
     return;
   }
-  const base = getBaseCanonical(row?.base || "") || String(row?.base || "").trim();
+  const base = getBaseCanonical(row?.base || "") || getManualDispatchDefaultBase();
   const mid = String(row?.mid || "").trim();
   if (manualDispatchBase) manualDispatchBase.value = base;
   if (manualDispatchMid) manualDispatchMid.value = mid;
@@ -931,10 +1133,24 @@ function applyManualDispatchVehicleSelection(){
   applyManualDispatchConductorSelection();
 }
 
-function openManualDispatchModal(){
+async function applyManualDispatchVehicleSelection(){
+  const internoValue = manualDispatchInterno?.value || "";
+  const lookupSeq = ++manualDispatchVehicleLookupSeq;
+  let row = findManualDispatchVehicleByInterno(internoValue);
+  if (!row) {
+    row = await fetchVehiculoSonarByInterno(internoValue);
+    if (lookupSeq !== manualDispatchVehicleLookupSeq) return;
+    if (row) fillManualDispatchInternoList();
+  }
+  if (lookupSeq !== manualDispatchVehicleLookupSeq) return;
+  applyManualDispatchVehicleRow(row);
+}
+
+async function openManualDispatchModal(){
   if (!manualDispatchModal || !btnManualDispatchCancel || !btnManualDispatchConfirm) {
     return Promise.resolve({ confirmed: false });
   }
+  await loadVehiculosSonarFromSupabase();
   fillManualDispatchInternoList();
   fillManualDispatchConductorList("");
   if (manualDispatchInterno) manualDispatchInterno.value = "";
@@ -1187,6 +1403,9 @@ function applyAuthState(session){
     currentProgramacionId = null;
     rows = [];
     novedades = [];
+    vehiculosSonarRows = [];
+    vehiculosSonarLoadedOnce = false;
+    vehiculosSonarLastLoadedAt = 0;
     currentBase = "";
     assignedByBase = {};
     authUserLabel.textContent = "No autenticado";
@@ -1283,8 +1502,8 @@ if (btnEditPlanillaSave) btnEditPlanillaSave.onclick = () => closeEditPlanillaMo
 if (btnManualDispatchCancel) btnManualDispatchCancel.onclick = () => closeManualDispatchModal(false);
 if (btnManualDispatchConfirm) btnManualDispatchConfirm.onclick = () => closeManualDispatchModal(true);
 if (btnManualDispatch) btnManualDispatch.onclick = () => handleManualDispatch();
-if (manualDispatchInterno) manualDispatchInterno.addEventListener("change", applyManualDispatchVehicleSelection);
-if (manualDispatchInterno) manualDispatchInterno.addEventListener("input", applyManualDispatchVehicleSelection);
+if (manualDispatchInterno) manualDispatchInterno.addEventListener("change", () => { applyManualDispatchVehicleSelection(); });
+if (manualDispatchInterno) manualDispatchInterno.addEventListener("input", () => { applyManualDispatchVehicleSelection(); });
 if (manualDispatchConductorName) manualDispatchConductorName.addEventListener("change", applyManualDispatchConductorSelection);
 if (manualDispatchConductorName) manualDispatchConductorName.addEventListener("input", applyManualDispatchConductorSelection);
 if (noteModal) {
@@ -2239,7 +2458,7 @@ const dispatchingRowUiIds = new Set();
 let outOfListVehicles = [];
 let outOfListVehicleKeySet = new Set();
 let operativoViewMode = "operativo";
-const ARRIVALS_PANEL_TAB_IDS = ["llegadas-aeropuerto", "llegadas-terminalnorte", "llegadas-san-diego", "llegadas-nutibara", "no-despacho", "fuera-lista", "conductores-csv", "planilla-afiliados"];
+const ARRIVALS_PANEL_TAB_IDS = ["llegadas-aeropuerto", "llegadas-terminalnorte", "llegadas-san-diego", "llegadas-nutibara", "no-despacho", "fuera-lista", "vehiculos-sonar", "asistencia-biometrica", "conductores-csv", "planilla-afiliados"];
 const ARRIVALS_ONLY_APP = true;
 const PLANILLA_REFRESH_MAX_AGE_MS = 60000;
 const PLANILLA_AUTO_REFRESH_MS = 60000;
@@ -2303,6 +2522,13 @@ const conductoresCsvStatusFilter = document.getElementById("conductoresCsvStatus
 const conductoresCsvCount = document.getElementById("conductoresCsvCount");
 const conductoresCsvStatus = document.getElementById("conductoresCsvStatus");
 const conductoresCsvBody = document.getElementById("conductoresCsvBody");
+const btnRefreshVehiculosSonar = document.getElementById("btnRefreshVehiculosSonar");
+const vehiculosSonarSearch = document.getElementById("vehiculosSonarSearch");
+const vehiculosSonarCount = document.getElementById("vehiculosSonarCount");
+const vehiculosSonarStatus = document.getElementById("vehiculosSonarStatus");
+const vehiculosSonarBody = document.getElementById("vehiculosSonarBody");
+const asistenciaBiometricaFrame = document.getElementById("asistenciaBiometricaFrame");
+const btnReloadAsistenciaBiometrica = document.getElementById("btnReloadAsistenciaBiometrica");
 const gridHead = document.querySelector('#grid thead');
 const gridBody = document.querySelector('#grid tbody');
 const novedadesBody = document.getElementById('novedadesBody');
@@ -3901,7 +4127,7 @@ async function persistCancelOnPlanillaRow(row, payload){
   if (error) throw error;
 }
 
-async function persistPassengersAndObservacionesOnPlanillaRow(row, payload){
+async function resolvePlanillaRowIdForUpdate(row){
   let rowId = row?.id;
   if (!rowId) {
     const targetKey = String(row?.cruce_key || "").trim();
@@ -3912,21 +4138,67 @@ async function persistPassengersAndObservacionesOnPlanillaRow(row, payload){
     }
   }
   if (!rowId) {
+    const targetKey = String(row?.cruce_key || "").trim();
+    if (targetKey) {
+      const { data, error } = await planillaSupabaseClient
+        .from(PLANILLA_TABLE_NAME)
+        .select("id")
+        .eq("cruce_key", targetKey)
+        .limit(1);
+      if (error) throw error;
+      if (Array.isArray(data) && data[0]?.id) rowId = data[0].id;
+    }
+  }
+  if (!rowId) {
+    const mid = String(row?.mid || "").trim();
+    const interno = String(row?.interno || "").trim();
+    if (mid || interno) {
+      let query = planillaSupabaseClient
+        .from(PLANILLA_TABLE_NAME)
+        .select("id")
+        .order("hora_llegada", { ascending: false, nullsFirst: false })
+        .limit(1);
+      if (mid) query = query.eq("mid", mid);
+      else query = query.eq("interno", interno);
+      const { data, error } = await query;
+      if (error) throw error;
+      if (Array.isArray(data) && data[0]?.id) rowId = data[0].id;
+    }
+  }
+  if (!rowId) {
     throw new Error("No se pudo identificar el id de la fila para actualizar.");
   }
+  return rowId;
+}
+
+async function persistPassengersAndObservacionesOnPlanillaRow(row, payload){
+  const rowId = await resolvePlanillaRowIdForUpdate(row);
   const patch = {
-    pasajeros: payload?.pasajeros ?? row?.pasajeros ?? null,
-    observaciones: payload?.observaciones ?? row?.observaciones ?? ""
+    pasajeros: String(payload?.pasajeros ?? row?.pasajeros ?? "").trim(),
+    observaciones: String(payload?.observaciones ?? row?.observaciones ?? "").trim()
   };
-  const { data, error } = await planillaSupabaseClient
-    .from(currentPlanillaTableName)
+  const { error } = await planillaSupabaseClient
+    .from(PLANILLA_TABLE_NAME)
     .update(patch)
-    .eq("id", rowId)
-    .select("id, pasajeros, observaciones")
-    .single();
+    .eq("id", rowId);
   if (error) throw error;
-  if (!data) throw new Error("Supabase no devolvio la fila actualizada.");
-  return data;
+
+  const { data: checkData, error: checkError } = await planillaSupabaseClient
+    .from(PLANILLA_TABLE_NAME)
+    .select("id, pasajeros, observaciones")
+    .eq("id", rowId)
+    .limit(1);
+  if (checkError) throw checkError;
+  const updatedRow = Array.isArray(checkData) ? checkData[0] : checkData;
+  if (updatedRow) {
+    const savedPasajeros = String(updatedRow?.pasajeros ?? "").trim();
+    const savedObservaciones = String(updatedRow?.observaciones ?? "").trim();
+    if (savedPasajeros !== patch.pasajeros || savedObservaciones !== patch.observaciones) {
+      throw new Error("Supabase respondio sin error, pero la fila no quedo actualizada. Revisa que la policy UPDATE aplique para esta fila.");
+    }
+    return updatedRow;
+  }
+  return { id: rowId, ...patch };
 }
 
 async function sendDispatchToSonar(payload){
@@ -4099,11 +4371,11 @@ async function handleManualDispatch(){
     itinerary: String(modalResult?.itinerary || "").trim(),
     observaciones: String(modalResult?.observaciones || "").trim(),
     interno: String(modalResult?.interno || "").trim(),
-    base: String(modalResult?.base || "").trim(),
+    base: String(modalResult?.base || getManualDispatchDefaultBase() || "").trim(),
     conductorName: String(modalResult?.conductorName || "").trim()
   };
-  if (!payload.interno || !payload.base || !payload.mId || !payload.drvId || !payload.itinerary) {
-    showToast("Despacho manual: faltan Interno, Base, MID, Driver ID o Itinerario.", "warn");
+  if (!payload.interno || !payload.mId || !payload.drvId || !payload.itinerary) {
+    showToast("Despacho manual: faltan Interno, MID, Driver ID o Itinerario.", "warn");
     return;
   }
   payload.itineraryLabel = String(getSonarItineraryById(payload.itinerary)?.nombre || payload.itinerary);
@@ -4367,15 +4639,25 @@ async function handleEditPlanillaRow(rowUiId){
     showToast("Pasajeros debe ser un numero entero.", "warn");
     return;
   }
-  const pasajeros = pasajerosRaw === "" ? null : Number(pasajerosRaw);
-  if (pasajeros !== null && (!Number.isFinite(pasajeros) || pasajeros < 0)) {
+  const pasajerosNumber = pasajerosRaw === "" ? null : Number(pasajerosRaw);
+  if (pasajerosNumber !== null && (!Number.isFinite(pasajerosNumber) || pasajerosNumber < 0)) {
     showToast("Pasajeros no puede ser negativo.", "warn");
     return;
   }
+  const pasajeros = pasajerosRaw;
   try {
     const updated = await persistPassengersAndObservacionesOnPlanillaRow(row, { pasajeros, observaciones });
     row.pasajeros = updated?.pasajeros == null ? "" : String(updated.pasajeros);
     row.observaciones = String(updated?.observaciones ?? "");
+    const updatedId = String(updated?.id || row?.id || "").trim();
+    if (updatedId) {
+      (Array.isArray(planillaAfiliadosRows) ? planillaAfiliadosRows : []).forEach(item => {
+        if (String(item?.id || "").trim() !== updatedId) return;
+        item.pasajeros = row.pasajeros;
+        item.observaciones = row.observaciones;
+      });
+    }
+    invalidatePlanillaDispatchResolutionCache();
     showToast("Pasajeros y observaciones actualizados.", "ok");
   } catch (error) {
     showToast(`No se pudo actualizar en Supabase: ${error?.message || "sin detalle"}`, "err");
@@ -7492,6 +7774,9 @@ document.querySelectorAll('.tab').forEach(tab => {
     if (tabId === 'fuera-lista') {
       renderFueraListaTab();
     }
+    if (tabId === 'vehiculos-sonar') {
+      loadVehiculosSonarFromSupabase({ force: true });
+    }
     if (tabId === 'conductores-csv') {
       renderConductoresCsvTab();
     }
@@ -8239,6 +8524,15 @@ function bindUIEvents(){
   if (conductoresCsvSearch) conductoresCsvSearch.addEventListener("input", renderConductoresCsvTab);
   if (conductoresCsvBaseFilter) conductoresCsvBaseFilter.addEventListener("change", renderConductoresCsvTab);
   if (conductoresCsvStatusFilter) conductoresCsvStatusFilter.addEventListener("change", renderConductoresCsvTab);
+  if (btnRefreshVehiculosSonar) btnRefreshVehiculosSonar.addEventListener("click", () => loadVehiculosSonarFromSupabase({ force: true }));
+  if (vehiculosSonarSearch) vehiculosSonarSearch.addEventListener("input", renderVehiculosSonarTab);
+  if (vehiculosSonarBody) vehiculosSonarBody.addEventListener("click", handleVehiculosSonarTableClick);
+  if (btnReloadAsistenciaBiometrica) {
+    btnReloadAsistenciaBiometrica.addEventListener("click", () => {
+      if (!asistenciaBiometricaFrame) return;
+      asistenciaBiometricaFrame.src = asistenciaBiometricaFrame.src;
+    });
+  }
   if (btnRefreshCompliance) btnRefreshCompliance.addEventListener("click", renderAdminComplianceDashboard);
   if (adminComplianceDate) adminComplianceDate.addEventListener("change", renderAdminComplianceDashboard);
   if (btnApplyConsulta) btnApplyConsulta.addEventListener("click", renderConsultaBaseView);
@@ -8365,6 +8659,7 @@ async function initializeApp(){
   loadPlanillaTableSourcePreference();
   loadBasesFromStorage();
   await loadDriversFromCSV();
+  await loadVehiculosSonarFromSupabase();
   await loadLatestProgramacionFromSupabase();
   await loadNovedadesFromSupabase();
   const pending = readPendingRowsLocal();
@@ -8473,16 +8768,6 @@ function bindWindowEvents(){
 
   window.addEventListener("resize", adjustDynamicTableViewport);
 }
-
-
-
-
-
-
-
-
-
-
 
 
 

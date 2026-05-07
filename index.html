@@ -157,6 +157,8 @@
           <div class="tab" data-tab="llegadas-nutibara">Llegadas Nutibara 2</div>
           <div class="tab" data-tab="no-despacho">No tuvieron despacho</div>
           <div class="tab" data-tab="fuera-lista">Fuera de lista</div>
+          <div class="tab" data-tab="vehiculos-sonar">Vehiculos Sonar</div>
+          <div class="tab" data-tab="asistencia-biometrica">Asistencia biometrica</div>
           <div class="tab" data-tab="conductores-csv">Conductores CSV</div>
           <div class="tab" data-tab="consulta">Consulta por fechas</div>
           <div class="tab" data-tab="visor">Visor Excel en linea</div>
@@ -528,6 +530,62 @@
           </div>
         </div>
 
+        <!-- Contenido Vehiculos Sonar -->
+        <div id="tab-vehiculos-sonar" class="tab-content">
+          <div class="row mobile-filters" style="margin-bottom:10px">
+            <h3 style="margin:0">Vehiculos Sonar</h3>
+            <button class="btn btn-ghost" id="btnRefreshVehiculosSonar">Actualizar</button>
+            <input id="vehiculosSonarSearch" type="text" placeholder="Buscar interno, placa o ID..." />
+            <span class="muted">Registros: <strong id="vehiculosSonarCount">0</strong></span>
+            <span class="muted" id="vehiculosSonarStatus">Sin cargar</span>
+          </div>
+          <div class="muted" style="margin:0 0 10px 0">
+            Edita el ID cuando Sonar cambie la unidad. El despacho manual usa este ID como MID.
+          </div>
+          <div style="overflow:auto;max-height:62vh">
+            <table id="vehiculosSonarTable">
+              <thead>
+                <tr>
+                  <th>Interno</th>
+                  <th>Placa</th>
+                  <th>ID Sonar</th>
+                  <th>Accion</th>
+                </tr>
+              </thead>
+              <tbody id="vehiculosSonarBody">
+                <tr><td colspan="4" class="muted" style="text-align:center;padding:12px">Sin datos.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Contenido Asistencia Biometrica -->
+        <div id="tab-asistencia-biometrica" class="tab-content">
+          <div class="embedded-app-shell">
+            <div class="embedded-app-toolbar">
+              <div>
+                <h3>Asistencia biometrica</h3>
+                <div class="embedded-app-subtitle">Registro y consulta de asistencia desde el modulo biometrico.</div>
+              </div>
+              <div class="row">
+                <button class="btn btn-ghost" id="btnReloadAsistenciaBiometrica">Recargar</button>
+                <a class="btn btn-primary embedded-app-link" href="https://desarrollocombuses.github.io/biometrico/asistencia-web.html" target="_blank" rel="noopener noreferrer">Abrir aparte</a>
+              </div>
+            </div>
+            <div class="embedded-app-frame-wrap">
+              <iframe
+                id="asistenciaBiometricaFrame"
+                class="embedded-app-frame"
+                src="https://desarrollocombuses.github.io/biometrico/asistencia-web.html"
+                title="Asistencia biometrica"
+                allow="camera; microphone; fullscreen; clipboard-read; clipboard-write"
+                loading="lazy"
+                referrerpolicy="no-referrer-when-downgrade"
+              ></iframe>
+            </div>
+          </div>
+        </div>
+
         <!-- Contenido Conductores CSV -->
         <div id="tab-conductores-csv" class="tab-content">
           <div class="row" style="margin-bottom:10px">
@@ -845,7 +903,7 @@
         <input id="manualDispatchInterno" type="text" list="manualDispatchInternoList" placeholder="Buscar interno..." />
         <datalist id="manualDispatchInternoList"></datalist>
       </div>
-      <div><strong>Base *</strong><input id="manualDispatchBase" type="text" placeholder="Base" readonly /></div>
+      <div><strong>Base</strong><input id="manualDispatchBase" type="text" placeholder="Base" readonly /></div>
       <div><strong>MID *</strong><input id="manualDispatchMid" type="text" placeholder="MID" readonly /></div>
       <div>
         <strong>Conductor *</strong>
@@ -875,6 +933,18 @@
 <script src="js/main.js"></script>
 </body>
 </html>
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
